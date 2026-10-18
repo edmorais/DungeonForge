@@ -2,6 +2,8 @@
 
 A three.js sandbox for designing high-fantasy dungeons on a grid of 3 ft squares. Lay floors, walls, doors, lights, furniture and loot, set the landscape and the hour of the day, then walk through your dungeon in first person or output a tiled battle map for printing.
 
+Try it on the web! <https://edmorais.github.io/DungeonForge/>
+
 Made with Claude Opus 5.5.
 
 ## Run it
