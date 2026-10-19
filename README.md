@@ -6,19 +6,6 @@ Try it on the web! <https://edmorais.github.io/DungeonForge/>
 
 Made with Claude Opus 5.5.
 
-## Run it
-
-```bash
-pnpm install
-pnpm dev            # http://localhost:5173
-pnpm build          # static site in dist/
-pnpm build:single   # one self-contained HTML file in dist-single/
-pnpm build:artifact # that file reshaped for the claude.ai artifact viewer (dist-single/artifact.html)
-pnpm desktop        # the game as a Windows/macOS/Linux desktop app (see Windows app below)
-pnpm preview        # serve the dist/ build
-```
-
-Requires Node 18+ and pnpm. The only runtime dependency is `three`.
 
 ## What you can do
 
@@ -66,6 +53,20 @@ Requires Node 18+ and pnpm. The only runtime dependency is `three`.
 | Walk through | V |
 | Walk: move, run, open, loot, fight, drink, torch, peaceful, leave | WASD, Shift, E or click, E, F, P, Esc |
 | Touch | With Move, one finger slides the view. With a building tool, tap or drag to build. Two fingers turn and zoom in every tool |
+
+## Run it
+
+```bash
+pnpm install
+pnpm dev            # http://localhost:5173
+pnpm build          # static site in dist/
+pnpm build:single   # one self-contained HTML file in dist-single/
+pnpm build:artifact # that file reshaped for the claude.ai artifact viewer (dist-single/artifact.html)
+pnpm desktop        # the game as a Windows/macOS/Linux desktop app (see Windows app below)
+pnpm preview        # serve the dist/ build
+```
+
+Requires Node 18+ and pnpm. The only runtime dependency is `three`.
 
 ## Windows app (Tauri)
 
