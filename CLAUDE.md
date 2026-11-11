@@ -17,12 +17,12 @@ There is no test runner, linter or type checker. Verify with `pnpm build` (must 
 
 ## Architecture in one screen
 
-- `config.js` grid: `CELL = 3` ft, 64 × 48 squares, `WALL_H = 10`, `FLOOR_Y = 0.12`, `MAX_LEVEL = 10`. Cell (i, j) → world with `cellX/cellZ`, lines with `lineX/lineZ`.
+- `config.js` grid: `CELL = 5` ft, `LEVEL = 2.5` ft (one height level), 64 × 48 squares, `WALL_H = 10`, `FLOOR_Y = 0.12`, `MAX_LEVEL = 12`. Cell (i, j) → world with `cellX/cellZ`, lines with `lineX/lineZ`.
 - `state.js` is the single source of truth: `data = { floors, heights, edges, objects, ... }`. Mutate through its methods, call `state.checkpoint()` before a user action (undo) and `state.emit()` after. Never touch three.js objects to change the map.
 - `world.js` rebuilds meshes from state on `emit`. Static geometry → `InstancedSet` batches (`geom.js`, `splitPrototype`). Nodes tagged `dyn(...)` in `models.js` (doors, lids, creatures, flames, pickups) stay separate so they can animate; `compactDynamic` merges their rigid children per material.
 - `catalog.js` defines every piece (`id, cat, name, size, layer, light, gp, rise...`); `CATEGORIES` order = palette order. `models.js` has a builder per id.
 - Edges: key `h:i:j` (north side of cell) / `v:i:j` (west side). Wide pieces store `{t, f, span}` on the anchor and `{t:'cover', a:anchorKey}` on the rest. `f` = wall material a door is framed in (must be a material name, e.g. `caveRock`, not a wall id).
-- Heights: `data.heights["i,j"]` = integer level −10..10 (×3 ft), 0 omitted. `heightmask.js` cuts holes in ground materials via `cutHoles(material)`; any new ground-like material needs it.
+- Heights: `data.heights["i,j"]` = integer level −12..12 (×`LEVEL`, 2.5 ft), 0 omitted. `heightmask.js` cuts holes in ground materials via `cutHoles(material)`; any new ground-like material needs it.
 - Stairs: climb toward local −z. Rotation r: 0 north, 1 west, 2 south, 3 east. A flight rises from its own square's level by `rise` ft; `world.stairHeight(x, z)` gives walk height.
 - `lights.js`: fixed pool of point lights (18 high / 8 low, 4 / 1 shadowed) reassigned to nearest flames, so shaders never recompile. Don't add `THREE.PointLight`s elsewhere.
 - `environment.js`: landscapes (`LANDSCAPES`), sky, sun/moon, terrain, scatter, particles, void and tabletop set pieces.
@@ -45,6 +45,9 @@ There is no test runner, linter or type checker. Verify with `pnpm build` (must 
 - Two faces of different materials in the same plane flicker (z-fighting). Never end a trim, sill or inset flush with the surface it sits on: overlap or stand proud by at least 0.03 ft (`LIP` in `models.js`). In the editor the camera's near plane follows the viewing distance (`main.js step`), which keeps gaps that small stable when zoomed out; it does nothing for a gap of zero.
 - Autosave key `dungeon-forge:autosave:v1` in localStorage; old maps without `heights` must keep loading.
 - Keep the Move tool the default so touch drags never build.
+- Squares are 5 ft wide and a height level is 2.5 ft: use `CELL` for anything across the floor and `LEVEL` for anything up or down, never one for the other. Models are real-sized; `FIT` in `catalog.js` re-sizes the ones first drawn for 3 ft squares. Maps saved before this change are not converted.
+- The interface is parchment and ink: the last block of `style.css` redefines the colour variables for paper, and `.walkhud` restores the light-on-dark values because the play HUD sits over the 3D view. New editor UI must read on paper; new HUD parts go inside `.walkhud`.
+- Wall and floor textures are painted in the last block of `textures.js` (`paintStone`: flat base, dark wash, dry-brushed lit edge) and override the plainer ones above it.
 - Prefer plain, short user-facing text (toasts, hints), British-neutral English, "ft" units.
 
 ## Debugging hooks

@@ -1,13 +1,14 @@
-// World units are feet. One grid square = 3 ft.
-export const CELL = 3;
-export const MAX_LEVEL = 10; // squares rise or sink up to 10 levels of 3 ft (30 ft)
-export const GRID_W = 64; // 192 ft east-west
-export const GRID_D = 48; // 144 ft north-south
+// World units are feet. One grid square = 5 ft, as on a tabletop battle map.
+export const CELL = 5;
+export const LEVEL = 2.5; // one step of raised or sunken ground: half a square
+export const MAX_LEVEL = 12; // squares rise or sink up to 12 levels (30 ft)
+export const GRID_W = 64; // 320 ft east-west
+export const GRID_D = 48; // 240 ft north-south
 export const WALL_H = 10;
 export const WALL_T = 0.6;
 export const FLOOR_Y = 0.12; // top of floor tiles
 
-// Indoor preset: 120 ft x 60 ft exterior wall (40 x 20 squares)
+// Indoor preset: 200 ft x 100 ft exterior wall (40 x 20 squares)
 export const KEEP_W = 40;
 export const KEEP_D = 20;
 export const KEEP_I0 = Math.floor((GRID_W - KEEP_W) / 2);

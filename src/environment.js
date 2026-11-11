@@ -11,7 +11,7 @@ import { ORDER, SHADOW_ONLY_LAYER } from './perf.js';
 const HX = (GRID_W * CELL) / 2, HZ = (GRID_D * CELL) / 2;
 const TERRAIN = 2600, SEG = 260;
 // the gaming table under a tabletop map (feet at model scale)
-const TABLE_W = 380, TABLE_D = 290, TABLE_H = 260;
+const TABLE_W = GRID_W * CELL + 190, TABLE_D = GRID_D * CELL + 150, TABLE_H = 300;
 
 // ---------- world-space value noise ----------
 const sm = (t) => t * t * (3 - 2 * t);
@@ -153,6 +153,10 @@ function lerpStops(stops, x) {
   }
   return stops[stops.length - 1][1].clone();
 }
+// The fog distances above were tuned when a square was 3 ft; a map is now two thirds wider and
+// seen from further away, so the fog starts and ends further out by the same share.
+for (const L of Object.values(LANDSCAPES)) { L.fogNear *= CELL / 3; L.fogFar *= CELL / 3; }
+
 // horizon/fog colour by sun elevation
 const SKY_STOPS = [[-0.3, col(0x0a0e1a)], [-0.12, col(0x141c30)], [-0.03, col(0x4a3a50)], [0.02, col(0xd88a5a)], [0.12, col(0xe8c0a0)], [0.3, col(0xc8dcec)], [1, col(0xb8d4ec)]];
 
@@ -876,6 +880,9 @@ function buildTabletop() {
   candle.add(fl);
   candle.position.set(-130, y0, 128);
   props.add(candle);
+  // the props were laid out round a smaller mat: push them out to the table's margins
+  const mx = (GRID_W * CELL + 24) / 2 - 108, mz = (GRID_D * CELL + 24) / 2 - 84;
+  for (const o of props.children) { o.position.x += Math.sign(o.position.x) * mx; o.position.z += Math.sign(o.position.z) * mz * 0.75; }
   g.add(props);
   g.traverse((o) => { if (o.isMesh && o !== floor && !o.material.transparent && o.parent !== fl) { o.castShadow = true; o.receiveShadow = true; } });
   return g;

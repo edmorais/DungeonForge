@@ -69,7 +69,7 @@ The first build compiles a few hundred Rust crates and takes several minutes; la
 
 | File | Role |
 | --- | --- |
-| `src/config.js` | Grid constants (3 ft squares, 10 ft walls) and grid-to-world helpers |
+| `src/config.js` | Grid constants (5 ft squares, 10 ft walls) and grid-to-world helpers |
 | `src/textures.js` | Canvas-painted textures (flagstone, cobble, planks, marble, brick, rock, lava…) with matching bump maps |
 | `src/materials.js` | Shared materials; structural materials carry the cutaway clipping plane |
 | `src/models.js` | Procedural builders for every piece |
@@ -121,6 +121,6 @@ The first build compiles a few hundred Rust crates and takes several minutes; la
 ```
 
 - **`floors`**: keyed by square `i,j`.
-- **`heights`**: keyed by square `i,j`, in whole 3 ft levels from -10 to 10. Squares at ground level are left out. Older maps without it load flat.
+- **`heights`**: keyed by square `i,j`, in whole 2.5 ft levels from -12 to 12. Squares at ground level are left out. Older maps without it load flat.
 - **`edges`**: keyed by `h:i:j`, a horizontal line at the north side of square (i, j), or `v:i:j`, a vertical line at its west side. `f` is the wall material a door is set into. A wide piece is stored on its first line with `span`; the lines it also covers hold a `cover` entry pointing back to it.
 - **`objects`**: each has an anchor square `i, j` and a rotation `r` in quarter turns.

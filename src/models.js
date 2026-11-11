@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { CELL, WALL_H, WALL_T, mulberry } from './config.js';
 import { mat, clipMat } from './materials.js';
 import { G, add, BX, CY, SP, CO, TO, LA, ICO, extrudeWall, dyn, noShadow } from './geom.js';
+import { table } from './furniture.js';
+// the everyday furniture is modelled in furniture.js
+export { table, roundTable, chair, bench, bed, bookshelf, throne } from './furniture.js';
 
 const H = CELL / 2;
 const PI = Math.PI;
@@ -33,7 +36,7 @@ function candle(parent, x, y, z, h = 0.5, r = 0.07) {
 // ======================= FLOORS =======================
 export function floorTile(matName) {
   const g = G();
-  add(g, BX(CELL, 0.24, CELL, 3), matName, 0, -0.12 + 0.12, 0);
+  add(g, BX(CELL, 0.24, CELL), matName, 0, -0.12 + 0.12, 0);
   return g;
 }
 
@@ -64,7 +67,7 @@ export function pitTile() {
 // ======================= WALLS (edge, along x) =======================
 export function plainWall(m, h = WALL_H, t = WALL_T) {
   const g = G();
-  add(g, BX(CELL, h, t, 3), clipMat(m), 0, h / 2, 0);
+  add(g, BX(CELL, h, t), clipMat(m), 0, h / 2, 0);
   return g;
 }
 
@@ -88,8 +91,9 @@ export function caveWall() {
 export function palisade() {
   const g = G();
   const rand = mulberry(7);
-  for (let k = 0; k < 5; k++) {
-    const x = -H + 0.3 + k * 0.6;
+  const logs = Math.round(CELL / 0.62);
+  for (let k = 0; k < logs; k++) {
+    const x = -H + (k + 0.5) * (CELL / logs);
     const h = 8.6 + rand() * 1.2;
     add(g, CY(0.3, 0.32, h, 8), clipMat('log'), x, h / 2, 0, 0, rand() * 6, 0);
     add(g, CO(0.3, 0.9, 8), clipMat('log'), x, h + 0.45, 0);
@@ -101,25 +105,27 @@ export function palisade() {
 
 export function ironBars() {
   const g = G();
-  add(g, BX(CELL, 0.6, WALL_T, 3), clipMat('stoneWall'), 0, 0.3, 0);
-  add(g, BX(CELL, 1.2, WALL_T, 3), clipMat('stoneWall'), 0, WALL_H - 0.6, 0);
-  for (let k = 0; k < 7; k++) add(g, CY(0.06, 0.06, WALL_H - 1.8, 6), clipMat('blackIron'), -H + 0.21 + k * 0.43, WALL_H / 2 - 0.3, 0);
+  add(g, BX(CELL, 0.6, WALL_T), clipMat('stoneWall'), 0, 0.3, 0);
+  add(g, BX(CELL, 1.2, WALL_T), clipMat('stoneWall'), 0, WALL_H - 0.6, 0);
+  const bars = Math.round(CELL / 0.45);
+  for (let k = 0; k < bars; k++) add(g, CY(0.06, 0.06, WALL_H - 1.8, 6), clipMat('blackIron'), -H + (k + 0.5) * (CELL / bars), WALL_H / 2 - 0.3, 0);
   add(g, BX(CELL, 0.12, 0.16), clipMat('blackIron'), 0, 4.5, 0);
   return g;
 }
 
 export function lowWall() {
   const g = G();
-  add(g, BX(CELL, 3, 0.8, 3), clipMat('stoneWall'), 0, 1.5, 0);
-  add(g, BX(CELL + 0.1, 0.25, 1.0, 3), clipMat('darkStone'), 0, 3.1, 0);
+  add(g, BX(CELL, 3, 0.8), clipMat('stoneWall'), 0, 1.5, 0);
+  add(g, BX(CELL + 0.1, 0.25, 1.0), clipMat('darkStone'), 0, 3.1, 0);
   return g;
 }
 
 export function crumbledWall() {
   const g = G();
-  add(g, BX(CELL, 2.2, 0.8, 3), clipMat('stoneWall'), 0, 1.1, 0);
-  add(g, BX(1.4, 2.0, 0.8, 3), clipMat('stoneWall'), -0.8, 3.2, 0);
-  add(g, BX(0.7, 1.2, 0.8, 3), clipMat('stoneWall'), -1.15, 4.8, 0);
+  add(g, BX(CELL, 2.2, 0.8), clipMat('stoneWall'), 0, 1.1, 0);
+  add(g, BX(2.4, 2.0, 0.8), clipMat('stoneWall'), -1.3, 3.2, 0);
+  add(g, BX(1.2, 1.2, 0.8), clipMat('stoneWall'), -1.9, 4.8, 0);
+  add(g, BX(0.9, 0.8, 0.8), clipMat('stoneWall'), 1.6, 2.6, 0);
   add(g, ICO(0.4, 0, 0.3, 3), 'rock', 0.9, 0.3, 0.8);
   add(g, ICO(0.3, 0, 0.3, 4), 'rock', 0.3, 0.2, 0.9);
   return g;
@@ -129,20 +135,20 @@ export function woodFence() {
   const g = G();
   add(g, BX(CELL, 0.25, 0.15), 'darkWood', 0, 1.4, 0);
   add(g, BX(CELL, 0.25, 0.15), 'darkWood', 0, 2.9, 0);
-  for (const x of [-0.75, 0, 0.75]) add(g, BX(0.35, 3.2, 0.1), 'wood', x, 1.8, 0.1);
+  for (let k = 0; k < 5; k++) add(g, BX(0.4, 3.2, 0.1), 'wood', -H + (k + 0.5) * (CELL / 5), 1.8, 0.1);
   return g;
 }
 
 export function hedgeWall() {
   const g = G();
-  add(g, BX(CELL, 5, 1.6, 3), clipMat('hedge'), 0, 2.5, 0);
+  add(g, BX(CELL, 5, 1.6), clipMat('hedge'), 0, 2.5, 0);
   return g;
 }
 
 // ---------- posts at grid vertices ----------
 export function post(m, w, h) {
   const g = G();
-  add(g, BX(w, h, w, 3), clipMat(m), 0, h / 2, 0);
+  add(g, BX(w, h, w), clipMat(m), 0, h / 2, 0);
   return g;
 }
 export function logPost() {
@@ -164,13 +170,13 @@ export function cavePost() {
 }
 
 // ======================= DOORS / OPENINGS =======================
-const OPEN_W = 2.2, OPEN_H = 7.2;
+const OPEN_W = 3.4, OPEN_H = 7.4; // a door in a 5 ft square
 
 function doorFrame(g, f, trim = true) {
   const jw = (CELL - OPEN_W) / 2;
-  add(g, BX(jw, WALL_H, WALL_T, 3), clipMat(f), -H + jw / 2, WALL_H / 2, 0);
-  add(g, BX(jw, WALL_H, WALL_T, 3), clipMat(f), H - jw / 2, WALL_H / 2, 0);
-  add(g, BX(OPEN_W, WALL_H - OPEN_H, WALL_T, 3), clipMat(f), 0, (WALL_H + OPEN_H) / 2, 0);
+  add(g, BX(jw, WALL_H, WALL_T), clipMat(f), -H + jw / 2, WALL_H / 2, 0);
+  add(g, BX(jw, WALL_H, WALL_T), clipMat(f), H - jw / 2, WALL_H / 2, 0);
+  add(g, BX(OPEN_W, WALL_H - OPEN_H, WALL_T), clipMat(f), 0, (WALL_H + OPEN_H) / 2, 0);
   if (trim) {
     const t = WALL_T + 0.16;
     add(g, BX(0.22, OPEN_H + 0.1, t), clipMat('darkStone'), -OPEN_W / 2 - 0.06, OPEN_H / 2, 0);
@@ -181,7 +187,7 @@ function doorFrame(g, f, trim = true) {
 
 function leaf(w, h, leafMat, studs) {
   const l = G();
-  add(l, BX(w, h, 0.22, 3), clipMat(leafMat), w / 2, h / 2, 0);
+  add(l, BX(w, h, 0.22), clipMat(leafMat), w / 2, h / 2, 0);
   for (const y of [1.2, h - 1.2]) add(l, BX(w - 0.1, 0.22, 0.28), clipMat('blackIron'), w / 2, y, 0);
   add(l, TO(0.16, 0.035, 6, 12), clipMat('brass'), w - 0.35, 3.4, 0.16);
   add(l, TO(0.16, 0.035, 6, 12), clipMat('brass'), w - 0.35, 3.4, -0.16);
@@ -236,8 +242,8 @@ export function portcullis(f) {
   const g = G();
   doorFrame(g, f);
   const grid = dyn(G(), { door: 'slide', open: 6.4 });
-  for (let k = 0; k < 6; k++) {
-    const x = -OPEN_W / 2 + 0.18 + k * (OPEN_W - 0.36) / 5;
+  for (let k = 0; k < 8; k++) {
+    const x = -OPEN_W / 2 + 0.18 + k * (OPEN_W - 0.36) / 7;
     add(grid, CY(0.07, 0.07, OPEN_H, 6), clipMat('blackIron'), x, OPEN_H / 2, 0);
     add(grid, CO(0.09, 0.3, 6), clipMat('blackIron'), x, -0.1, 0, PI, 0, 0);
   }
@@ -262,19 +268,20 @@ function archShape(halfW, springY, wallH = WALL_H) {
 
 export function archway(f) {
   const g = G();
-  add(g, extrudeWall(archShape(1.15, 6.0), WALL_T), clipMat(f), 0, 0, 0);
+  const AW = 1.75; // half the opening
+  add(g, extrudeWall(archShape(AW, 6.0), WALL_T), clipMat(f), 0, 0, 0);
   const trimShape = new THREE.Shape();
   // the trim reaches a little into the opening (LIP), so its inner face covers the wall's
-  trimShape.absarc(0, 0, 1.4, 0, PI, false);
-  trimShape.lineTo(-1.15 + LIP, 0);
-  trimShape.absarc(0, 0, 1.15 - LIP, PI, 0, true);
-  trimShape.lineTo(1.4, 0);
+  trimShape.absarc(0, 0, AW + 0.25, 0, PI, false);
+  trimShape.lineTo(-AW + LIP, 0);
+  trimShape.absarc(0, 0, AW - LIP, PI, 0, true);
+  trimShape.lineTo(AW + 0.25, 0);
   const trim = extrudeWall(trimShape, WALL_T + 0.2);
   add(g, trim, clipMat('darkStone'), 0, 6.0, 0);
   const jw = 0.25 + LIP;
-  add(g, BX(jw, 6.0, WALL_T + 0.2), clipMat('darkStone'), -1.4 + jw / 2, 3.0, 0);
-  add(g, BX(jw, 6.0, WALL_T + 0.2), clipMat('darkStone'), 1.4 - jw / 2, 3.0, 0);
-  add(g, BX(0.5, 0.7, WALL_T + 0.3), clipMat('darkStone'), 0, 7.4, 0);
+  add(g, BX(jw, 6.0, WALL_T + 0.2), clipMat('darkStone'), -AW - 0.25 + jw / 2, 3.0, 0);
+  add(g, BX(jw, 6.0, WALL_T + 0.2), clipMat('darkStone'), AW + 0.25 - jw / 2, 3.0, 0);
+  add(g, BX(0.5, 0.7, WALL_T + 0.3), clipMat('darkStone'), 0, 6.0 + AW + 0.25, 0);
   return g;
 }
 
@@ -283,7 +290,7 @@ export function windowWall(f, stained = false) {
   const s = new THREE.Shape();
   s.moveTo(-H, 0); s.lineTo(H, 0); s.lineTo(H, WALL_H); s.lineTo(-H, WALL_H); s.lineTo(-H, 0);
   const hole = new THREE.Path();
-  const hw = 0.7, y0 = 3.4, ys = 6.6;
+  const hw = 1.0, y0 = 3.4, ys = 6.4;
   hole.moveTo(-hw, y0);
   hole.lineTo(hw, y0);
   hole.lineTo(hw, ys);
@@ -291,7 +298,7 @@ export function windowWall(f, stained = false) {
   hole.lineTo(-hw, y0);
   s.holes.push(hole);
   add(g, extrudeWall(s, WALL_T), clipMat(f), 0, 0, 0);
-  add(g, BX(1.8, 0.2, WALL_T + 0.35), clipMat('darkStone'), 0, y0 - 0.1 + LIP, 0);
+  add(g, BX(hw * 2 + 0.4, 0.2, WALL_T + 0.35), clipMat('darkStone'), 0, y0 - 0.1 + LIP, 0);
   if (stained) {
     const gs = new THREE.Shape();
     gs.moveTo(-hw, y0); gs.lineTo(hw, y0); gs.lineTo(hw, ys); gs.absarc(0, ys, hw, 0, PI, false); gs.lineTo(-hw, y0);
@@ -300,7 +307,7 @@ export function windowWall(f, stained = false) {
     add(g, BX(0.06, ys + hw - y0, 0.08), clipMat('blackIron'), 0, (y0 + ys + hw) / 2, 0);
     add(g, BX(hw * 2, 0.06, 0.08), clipMat('blackIron'), 0, 5.0, 0);
   } else {
-    for (const x of [-0.35, 0, 0.35]) add(g, CY(0.045, 0.045, ys + hw - y0, 6), clipMat('blackIron'), x, (y0 + ys + hw) / 2, 0);
+    for (const x of [-0.6, -0.2, 0.2, 0.6]) add(g, CY(0.045, 0.045, ys + hw - y0, 6), clipMat('blackIron'), x, (y0 + ys + hw) / 2, 0);
     add(g, BX(hw * 2, 0.08, 0.1), clipMat('blackIron'), 0, 5.2, 0);
   }
   return g;
@@ -311,7 +318,7 @@ export function secretDoor(f) {
   doorFrame(g, f, false);
   const pivot = dyn(G(), { door: 'swing', open: 1.57 });
   pivot.position.set(0, 0, 0);
-  add(pivot, BX(OPEN_W, OPEN_H, WALL_T * 0.95, 3), clipMat(f), 0, OPEN_H / 2, 0);
+  add(pivot, BX(OPEN_W, OPEN_H, WALL_T * 0.95), clipMat(f), 0, OPEN_H / 2, 0);
   g.add(pivot);
   return g;
 }
@@ -461,94 +468,6 @@ export function glowShrooms() {
 }
 
 // ======================= FURNITURE =======================
-export function table(w = 2) {
-  const g = G();
-  const L = w * CELL - 0.6, D = CELL - 0.6, y = 2.6;
-  add(g, BX(L, 0.2, D, 3), 'planks', 0, y, 0);
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, BX(0.25, y, 0.25), 'darkWood', sx * (L / 2 - 0.3), y / 2, sz * (D / 2 - 0.3));
-  add(g, BX(L - 0.6, 0.2, 0.12), 'darkWood', 0, 0.6, 0);
-  return g;
-}
-
-export function roundTable() {
-  const g = G();
-  add(g, CY(1.2, 1.2, 0.18, 20), 'wood', 0, 2.6, 0);
-  add(g, CY(0.15, 0.2, 2.5, 8), 'darkWood', 0, 1.3, 0);
-  add(g, CY(0.6, 0.7, 0.15, 12), 'darkWood', 0, 0.08, 0);
-  return g;
-}
-
-export function chair() {
-  const g = G();
-  add(g, BX(1.4, 0.15, 1.4), 'wood', 0, 1.6, 0.1);
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, BX(0.15, 1.6, 0.15), 'darkWood', sx * 0.6, 0.8, 0.1 + sz * 0.6);
-  for (const sx of [-1, 1]) add(g, BX(0.15, 1.9, 0.15), 'darkWood', sx * 0.6, 2.55, -0.5);
-  // the slats end inside the posts, not flush with their outer faces
-  add(g, BX(1.3, 0.5, 0.1), 'wood', 0, 3.0, -0.5);
-  add(g, BX(1.3, 0.2, 0.1), 'wood', 0, 2.2, -0.5);
-  return g;
-}
-
-export function bench() {
-  const g = G();
-  add(g, BX(5.4, 0.22, 1.2, 3), 'planks', 0, 1.6, 0);
-  for (const x of [-2.2, 2.2]) add(g, BX(0.25, 1.5, 1.0), 'darkWood', x, 0.75, 0);
-  return g;
-}
-
-export function bed() {
-  const g = G();
-  add(g, BX(2.6, 0.9, 5.6, 3), 'darkWood', 0, 0.75, 0);
-  add(g, BX(2.4, 0.5, 5.3, 3), 'linen', 0, 1.35, 0.05);
-  add(g, BX(2.5, 0.25, 3.4, 3), 'redCloth', 0, 1.55, 0.95);
-  add(g, BX(1.6, 0.35, 0.8, 3), 'linen', 0, 1.75, -2.1);
-  add(g, BX(2.6, 2.8, 0.25, 3), 'darkWood', 0, 1.4, -2.8);
-  add(g, BX(2.6, 1.6, 0.2, 3), 'darkWood', 0, 0.8, 2.8);
-  for (const x of [-1.2, 1.2]) add(g, CY(0.12, 0.12, 3.4, 6), 'darkWood', x, 1.7, -2.8);
-  return g;
-}
-
-export function bookshelf() {
-  const g = G();
-  const z = -H + 0.85 + WALL_T / 2;
-  const rand = mulberry(31);
-  add(g, BX(2.8, 7, 0.12), 'darkWood', 0, 3.5, z - 0.6);
-  for (const x of [-1.35, 1.35]) add(g, BX(0.12, 7, 1.3), 'darkWood', x, 3.5, z);
-  const books = ['redCloth', 'blueCloth', 'greenCloth', 'purpleCloth', 'canvas', 'parchment'];
-  for (let s = 0; s < 5; s++) {
-    const y = 0.25 + s * 1.5;
-    add(g, BX(2.7, 0.12, 1.25), 'darkWood', 0, y, z);
-    let x = -1.25, n = 0;
-    while (x < 1.15) {
-      const w = 0.12 + rand() * 0.14, h = 0.8 + rand() * 0.45;
-      if (rand() < 0.08) { x += 0.3; continue; }
-      // each book is pushed in a little differently, so a leaning book's front never lies in
-      // the same plane as its neighbours'
-      const dz = ((n++ * 7) % 5) * 0.014;
-      const b = add(g, BX(w, h, 0.85 - dz), books[Math.floor(rand() * books.length)], x + w / 2, y + 0.06 + h / 2, z + 0.1 - dz / 2);
-      if (rand() < 0.1) b.rotation.z = 0.25;
-      x += w + 0.01;
-    }
-  }
-  add(g, BX(2.8, 0.15, 1.35), 'darkWood', 0, 7.05, z);
-  return g;
-}
-
-export function throne() {
-  const g = G();
-  add(g, BX(2.8, 0.5, 2.8, 3), 'paleStone', 0, 0.25, 0);
-  add(g, BX(2.2, 1.4, 2.0), 'gold', 0, 1.2, 0);
-  add(g, BX(1.9, 0.3, 1.8), 'redCloth', 0, 2.05, 0.05);
-  add(g, BX(2.2, 4.8, 0.4), 'gold', 0, 3.6, -0.8);
-  add(g, BX(1.6, 3.8, 0.1), 'redCloth', 0, 3.6, -0.56);
-  for (const x of [-1, 1]) {
-    add(g, BX(0.3, 0.9, 1.8), 'gold', x * 1.0, 2.4, 0);
-    add(g, SP(0.22, 8, 6), 'ruby', x * 1.0, 6.2, -0.8);
-  }
-  add(g, CO(0.5, 0.9, 4), 'gold', 0, 6.4, -0.8, 0, PI / 4, 0);
-  return g;
-}
-
 export function barrel() {
   const g = G();
   add(g, LA([[0, 0], [0.75, 0], [0.92, 0.9], [0.95, 1.6], [0.92, 2.3], [0.75, 3.1], [0, 3.1]], 14), 'wood', 0, 0, 0);
@@ -578,9 +497,9 @@ export function crates() {
 
 export function altar() {
   const g = G();
-  add(g, BX(5.2, 0.4, 2.4, 3), 'darkStone', 0, 0.2, 0);
-  add(g, BX(4.6, 2.6, 1.8, 3), 'paleStone', 0, 1.7, 0);
-  add(g, BX(5.0, 0.3, 2.2, 3), 'paleStone', 0, 3.15, 0);
+  add(g, BX(5.2, 0.4, 2.4), 'darkStone', 0, 0.2, 0);
+  add(g, BX(4.6, 2.6, 1.8), 'paleStone', 0, 1.7, 0);
+  add(g, BX(5.0, 0.3, 2.2), 'paleStone', 0, 3.15, 0);
   add(g, BX(1.2, 0.04, 2.3), 'redCloth', 0, 3.31, 0);
   add(g, BX(1.2, 1.4, 0.03), 'redCloth', 0, 2.6, 1.13);
   add(g, ICO(0.35, 1, 0.05, 1), 'runeGlow', 0, 2.0, 0.92).scale.set(1, 1, 0.1);
@@ -697,8 +616,8 @@ export function rug() {
 
 export function statue() {
   const g = G();
-  add(g, BX(2.4, 1.2, 2.4, 3), 'darkStone', 0, 0.6, 0);
-  add(g, BX(2.0, 0.25, 2.0, 3), 'paleStone', 0, 1.3, 0);
+  add(g, BX(2.4, 1.2, 2.4), 'darkStone', 0, 0.6, 0);
+  add(g, BX(2.0, 0.25, 2.0), 'paleStone', 0, 1.3, 0);
   const body = LA([[0, 0], [0.75, 0], [0.7, 1.2], [0.55, 2.6], [0.62, 3.4], [0.5, 3.9], [0.22, 4.1], [0, 4.1]], 14);
   add(g, body, 'paleStone', 0, 1.4, 0);
   add(g, SP(0.35, 12, 8), 'paleStone', 0, 5.8, 0);
@@ -711,26 +630,26 @@ export function statue() {
 
 export function pillar() {
   const g = G();
-  add(g, BX(2.2, 0.5, 2.2, 3), 'paleStone', 0, 0.25, 0);
+  add(g, BX(2.2, 0.5, 2.2), 'paleStone', 0, 0.25, 0);
   add(g, CY(0.9, 0.95, 0.4, 16), 'paleStone', 0, 0.7, 0);
   const shaft = CY(0.72, 0.8, WALL_H - 1.9, 16, 1);
   add(g, shaft, 'paleStone', 0, WALL_H / 2 - 0.05, 0);
   add(g, CY(0.95, 0.75, 0.5, 16), 'paleStone', 0, WALL_H - 0.95, 0);
-  add(g, BX(2.2, 0.45, 2.2, 3), 'paleStone', 0, WALL_H - 0.45, 0);
+  add(g, BX(2.2, 0.45, 2.2), 'paleStone', 0, WALL_H - 0.45, 0);
   return g;
 }
 
 export function stairsUp() {
   const g = G();
   const steps = 10, run = (2 * CELL) / steps, rise = 0.7;
-  for (let k = 0; k < steps; k++) add(g, BX(CELL - 0.2, rise * (k + 1), run, 3), 'stoneWall', 0, rise * (k + 1) / 2, CELL - run / 2 - k * run);
+  for (let k = 0; k < steps; k++) add(g, BX(CELL - 0.2, rise * (k + 1), run), 'stoneWall', 0, rise * (k + 1) / 2, CELL - run / 2 - k * run);
   for (const x of [-1, 1]) add(g, BX(0.2, 1, 2 * CELL), 'darkStone', x * (H - 0.1), rise * steps / 2 + 1, 0, -Math.atan(rise / run) * 0, 0, 0).scale.y = 1;
   return g;
 }
 
 export function trapdoor() {
   const g = G();
-  add(g, BX(2.4, 0.08, 2.4, 3), 'planks', 0, 0.04, 0);
+  add(g, BX(2.4, 0.08, 2.4), 'planks', 0, 0.04, 0);
   add(g, BX(2.5, 0.06, 0.2), 'blackIron', 0, 0.08, -0.7);
   add(g, BX(2.5, 0.06, 0.2), 'blackIron', 0, 0.08, 0.7);
   add(g, TO(0.2, 0.04, 4, 10), 'blackIron', 0, 0.1, 1.0, PI / 2, 0, 0);
@@ -746,8 +665,8 @@ export function well() {
   add(g, CY(0.02, 0.02, 1.2, 4), 'rope', 0, 3.5, 0);
   add(g, CY(0.22, 0.18, 0.4, 8), 'wood', 0, 2.8, 0);
   const roof = G();
-  add(roof, BX(3.0, 0.12, 1.6, 3), 'planks', 0, 0, 0.55, 0.65, 0, 0);
-  add(roof, BX(3.0, 0.12, 1.6, 3), 'planks', 0, 0, -0.55, -0.65, 0, 0);
+  add(roof, BX(3.0, 0.12, 1.6), 'planks', 0, 0, 0.55, 0.65, 0, 0);
+  add(roof, BX(3.0, 0.12, 1.6), 'planks', 0, 0, -0.55, -0.65, 0, 0);
   roof.position.y = 5.4;
   g.add(roof);
   return g;
@@ -771,8 +690,8 @@ export function fountain() {
 
 export function sarcophagus() {
   const g = G();
-  add(g, BX(2.5, 2.4, 5.6, 3), 'darkStone', 0, 1.2, 0);
-  add(g, BX(2.7, 0.35, 5.8, 3), 'paleStone', 0, 2.55, 0);
+  add(g, BX(2.5, 2.4, 5.6), 'darkStone', 0, 1.2, 0);
+  add(g, BX(2.7, 0.35, 5.8), 'paleStone', 0, 2.55, 0);
   const fig = G();
   add(fig, LA([[0, 0], [0.55, 0], [0.5, 2.6], [0.35, 3.2], [0, 3.3]], 10), 'paleStone', 0, 0, 0);
   add(fig, SP(0.3, 10, 8), 'paleStone', 0, 3.6, 0);
@@ -857,7 +776,7 @@ export function cobweb() {
 // The spikes are one moving part: up in the editor, below the plate in walk mode until sprung.
 export function spikeTrap() {
   const g = G();
-  add(g, BX(2.6, 0.12, 2.6, 3), 'blackIron', 0, 0.06, 0);
+  add(g, BX(2.6, 0.12, 2.6), 'blackIron', 0, 0.06, 0);
   const spikes = dyn(G(), { trap: 'spikes' });
   for (let a = 0; a < 5; a++) for (let b = 0; b < 5; b++) {
     add(g, CY(0.1, 0.1, 0.02, 6), 'pitBlack', -1.0 + a * 0.5, 0.125, -1.0 + b * 0.5);
@@ -871,7 +790,7 @@ export function spikeTrap() {
 // once the walker has noticed the plate.
 export function pressurePlate() {
   const g = G();
-  add(g, BX(2.9, 0.03, 2.9, 3), 'flagstone', 0, 0.015, 0); // one more slab among flagstones; it shows on other floors
+  add(g, BX(2.9, 0.03, 2.9), 'flagstone', 0, 0.015, 0); // one more slab among flagstones; it shows on other floors
   const mark = dyn(G(), { trapMark: true });
   add(mark, TO(0.9, 0.05, 4, 20), 'eyeRed', 0, 0.09, 0, PI / 2, 0, 0);
   add(mark, BX(0.12, 0.04, 1.1), 'eyeRed', 0, 0.09, 0, 0, PI / 4, 0);
@@ -965,7 +884,7 @@ export function alchemyTable() {
 
 export function bedroll() {
   const g = G();
-  add(g, BX(2.0, 0.25, 5.0, 3), 'greenCloth', 0, 0.13, 0.3);
+  add(g, BX(2.0, 0.25, 5.0), 'greenCloth', 0, 0.13, 0.3);
   add(g, CY(0.35, 0.35, 2.0, 10), 'greenCloth', 0, 0.35, -2.4, 0, 0, PI / 2);
   add(g, BX(1.0, 0.8, 0.6), 'canvas', 0.9, 0.4, -2.4);
   return g;
@@ -1305,7 +1224,7 @@ export function redMushrooms() {
 
 export function standingStone(seed = 3) {
   const g = G();
-  const st = add(g, BX(1.4, 8, 0.9, 3), 'mossRock', 0, 3.8, 0);
+  const st = add(g, BX(1.4, 8, 0.9), 'mossRock', 0, 3.8, 0);
   st.rotation.set(0.04, 0.2, -0.05);
   const p = st.geometry.attributes.position;
   for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * 0.75); }
@@ -1317,7 +1236,7 @@ export function standingStone(seed = 3) {
 
 export function ruinedColumn() {
   const g = G();
-  add(g, BX(2.2, 0.5, 2.2, 3), 'paleStone', 0, 0.25, 0);
+  add(g, BX(2.2, 0.5, 2.2), 'paleStone', 0, 0.25, 0);
   const shaft = new THREE.CylinderGeometry(0.72, 0.8, 4.2, 16, 4);
   const p = shaft.attributes.position;
   for (let i = 0; i < p.count; i++) if (p.getY(i) > 2.0) p.setY(i, p.getY(i) + Math.sin(p.getX(i) * 4) * 0.5 - 0.3);
@@ -1469,9 +1388,9 @@ export function youngDragon() {
 
 function wideFrame(g, f, span, openW, openH, trimMat = 'darkStone') {
   const W = span * CELL, hw = W / 2, jw = (W - openW) / 2;
-  add(g, BX(jw, WALL_H, WALL_T, 3), clipMat(f), -hw + jw / 2, WALL_H / 2, 0);
-  add(g, BX(jw, WALL_H, WALL_T, 3), clipMat(f), hw - jw / 2, WALL_H / 2, 0);
-  add(g, BX(openW, WALL_H - openH, WALL_T, 3), clipMat(f), 0, (WALL_H + openH) / 2, 0);
+  add(g, BX(jw, WALL_H, WALL_T), clipMat(f), -hw + jw / 2, WALL_H / 2, 0);
+  add(g, BX(jw, WALL_H, WALL_T), clipMat(f), hw - jw / 2, WALL_H / 2, 0);
+  add(g, BX(openW, WALL_H - openH, WALL_T), clipMat(f), 0, (WALL_H + openH) / 2, 0);
   if (trimMat) {
     const t = WALL_T + 0.2;
     add(g, BX(0.3, openH + 0.1, t), clipMat(trimMat), -openW / 2 - 0.08, openH / 2, 0);
@@ -1510,7 +1429,7 @@ function archTrim(g, halfW, springY, thick = 0.32) {
 // 6 ft double doors under a stone lintel, iron-banded and studded
 export function greatDoors(f) {
   const g = G();
-  const openW = 4.8, openH = 8.4;
+  const openW = 7.6, openH = 8.4;
   wideFrame(g, f, 2, openW, openH);
   const w = openW / 2;
   const p1 = dyn(G(), { door: 'swing', open: -1.6 });
@@ -1534,7 +1453,7 @@ export function greatDoors(f) {
 // an open 6 ft arch
 export function grandArch(f) {
   const g = G();
-  const halfW = 2.35, spring = 5.9;
+  const halfW = 3.7, spring = 5.2;
   add(g, extrudeWall(archOutline(CELL, halfW, spring), WALL_T), clipMat(f), 0, 0, 0);
   archTrim(g, halfW, spring, 0.36);
   return g;
@@ -1543,10 +1462,10 @@ export function grandArch(f) {
 // a 9 ft portcullis gate with heavy stone surround
 export function castleGate(f) {
   const g = G();
-  const openW = 7.4, openH = 8.6;
+  const openW = 11.6, openH = 8.6;
   wideFrame(g, f, 3, openW, openH);
   const grid = dyn(G(), { door: 'slide', open: 7.6 });
-  const nBars = 10;
+  const nBars = 15;
   for (let k = 0; k < nBars; k++) {
     const x = -openW / 2 + 0.25 + k * (openW - 0.5) / (nBars - 1);
     add(grid, CY(0.08, 0.08, openH, 6), clipMat('blackIron'), x, openH / 2, 0);
@@ -1556,7 +1475,7 @@ export function castleGate(f) {
   g.add(grid);
   // flanking buttresses
   for (const sx of [-1, 1]) {
-    add(g, BX(0.9, WALL_H + 0.6, WALL_T + 1.2, 3), clipMat('darkStone'), sx * (openW / 2 + 0.75), (WALL_H + 0.6) / 2, 0);
+    add(g, BX(0.9, WALL_H + 0.6, WALL_T + 1.2), clipMat('darkStone'), sx * (openW / 2 + 0.75), (WALL_H + 0.6) / 2, 0);
     add(g, BX(1.1, 0.4, WALL_T + 1.4), clipMat('darkStone'), sx * (openW / 2 + 0.75), WALL_H + 0.8, 0);
   }
   return g;
@@ -1570,15 +1489,15 @@ export function palisadeGate() {
   const half = (sign) => {
     const p = dyn(G(), { door: 'swing', open: sign * -1.5 });
     p.position.set(sign * -W / 2, 0, 0);
-    for (let k = 0; k < 5; k++) {
-      const x = sign * (0.3 + k * 0.6);
+    for (let k = 0; k < 8; k++) {
+      const x = sign * (0.31 + k * 0.62);
       const h = 8.2 + rand() * 0.8;
       add(p, CY(0.28, 0.3, h, 8), clipMat('log'), x, h / 2 + 0.1, 0);
       add(p, CO(0.28, 0.8, 8), clipMat('log'), x, h + 0.5, 0);
     }
-    add(p, BX(2.9, 0.3, 0.22), clipMat('darkWood'), sign * 1.5, 2.2, 0.32);
-    add(p, BX(2.9, 0.3, 0.22), clipMat('darkWood'), sign * 1.5, 6.6, 0.32);
-    add(p, BX(0.24, 4.9, 0.2), clipMat('darkWood'), sign * 1.5, 4.4, 0.36, 0, 0, sign * 0.62);
+    add(p, BX(4.9, 0.3, 0.22), clipMat('darkWood'), sign * 2.5, 2.2, 0.32);
+    add(p, BX(4.9, 0.3, 0.22), clipMat('darkWood'), sign * 2.5, 6.6, 0.32);
+    add(p, BX(0.24, 6.4, 0.2), clipMat('darkWood'), sign * 2.5, 4.4, 0.36, 0, 0, sign * 0.84);
     return p;
   };
   g.add(half(1), half(-1));
@@ -1591,14 +1510,14 @@ export function greatWindow(f) {
   const g = G();
   const s = new THREE.Shape();
   s.moveTo(-CELL, 0); s.lineTo(CELL, 0); s.lineTo(CELL, WALL_H); s.lineTo(-CELL, WALL_H); s.lineTo(-CELL, 0);
-  const hw = 1.9, y0 = 2.6, ys = 6.6;
+  const hw = 3.0, y0 = 2.6, ys = 5.6;
   const hole = new THREE.Path();
   hole.moveTo(-hw, y0); hole.lineTo(hw, y0); hole.lineTo(hw, ys); hole.absarc(0, ys, hw, 0, PI, false); hole.lineTo(-hw, y0);
   s.holes.push(hole);
   add(g, extrudeWall(s, WALL_T), clipMat(f), 0, 0, 0);
   add(g, BX(hw * 2 + 0.8, 0.28, WALL_T + 0.6), clipMat('darkStone'), 0, y0 - 0.14 + LIP, 0);
   archTrim(g, hw, ys, 0.26);
-  for (const x of [-0.95, 0, 0.95]) add(g, BX(0.12, ys + hw - y0, 0.16), clipMat('darkStone'), x, (y0 + ys + hw) / 2, 0);
+  for (const x of [-1.5, 0, 1.5]) add(g, BX(0.12, ys + hw - y0, 0.16), clipMat('darkStone'), x, (y0 + ys + hw) / 2, 0);
   add(g, BX(hw * 2, 0.12, 0.16), clipMat('darkStone'), 0, 5.4, 0);
   const gl = new THREE.Shape();
   gl.moveTo(-hw, y0); gl.lineTo(hw, y0); gl.lineTo(hw, ys); gl.absarc(0, ys, hw, 0, PI, false); gl.lineTo(-hw, y0);
@@ -1619,11 +1538,11 @@ export function alcoveWall(f) {
   add(g, extrudeWall(s, WALL_T), clipMat(f), 0, 0, 0);
   // the recess bulges out behind the wall (-z side)
   const back = -WALL_T / 2 - depth / 2;
-  add(g, BX(hw * 2 + 0.6, ys + hw - y0 + 0.6, 0.4, 3), clipMat(f), 0, (y0 + ys + hw) / 2, -WALL_T / 2 - depth + 0.2);
-  for (const sx of [-1, 1]) add(g, BX(0.3, ys + hw - y0 + 0.6, depth, 3), clipMat(f), sx * (hw + 0.15), (y0 + ys + hw) / 2, back);
+  add(g, BX(hw * 2 + 0.6, ys + hw - y0 + 0.6, 0.4), clipMat(f), 0, (y0 + ys + hw) / 2, -WALL_T / 2 - depth + 0.2);
+  for (const sx of [-1, 1]) add(g, BX(0.3, ys + hw - y0 + 0.6, depth), clipMat(f), sx * (hw + 0.15), (y0 + ys + hw) / 2, back);
   // the sill stands a little proud of the wall and the recess all round, and of the niche floor
-  add(g, BX(hw * 2 + 0.76, 0.36, depth + WALL_T + 0.24, 3), clipMat('darkStone'), 0, y0 - 0.18 + LIP, back + WALL_T / 2 + 0.04);
-  add(g, BX(hw * 2 + 0.6, 0.3, depth, 3), clipMat(f), 0, ys + hw + 0.15, back);
+  add(g, BX(hw * 2 + 0.76, 0.36, depth + WALL_T + 0.24), clipMat('darkStone'), 0, y0 - 0.18 + LIP, back + WALL_T / 2 + 0.04);
+  add(g, BX(hw * 2 + 0.6, 0.3, depth), clipMat(f), 0, ys + hw + 0.15, back);
   archTrim(g, hw, ys, 0.24);
   // statue and candles inside
   add(g, BX(0.9, 0.4, 0.8), 'darkStone', 0, y0 + 0.2, -0.6);
@@ -1637,11 +1556,11 @@ export function alcoveWall(f) {
 // a 6 ft wall braced by a stepped buttress on both faces
 export function buttressedWall(f) {
   const g = G();
-  add(g, BX(2 * CELL, WALL_H, WALL_T, 3), clipMat(f), 0, WALL_H / 2, 0);
+  add(g, BX(2 * CELL, WALL_H, WALL_T), clipMat(f), 0, WALL_H / 2, 0);
   for (const sz of [-1, 1]) {
-    add(g, BX(1.3, 4.2, 1.5, 3), clipMat(f), 0, 2.1, sz * (WALL_T / 2 + 0.75));
-    add(g, BX(1.1, 3.4, 1.0, 3), clipMat(f), 0, 5.9, sz * (WALL_T / 2 + 0.5));
-    add(g, BX(0.9, 2.4, 0.5, 3), clipMat(f), 0, 8.8, sz * (WALL_T / 2 + 0.25));
+    add(g, BX(1.3, 4.2, 1.5), clipMat(f), 0, 2.1, sz * (WALL_T / 2 + 0.75));
+    add(g, BX(1.1, 3.4, 1.0), clipMat(f), 0, 5.9, sz * (WALL_T / 2 + 0.5));
+    add(g, BX(0.9, 2.4, 0.5), clipMat(f), 0, 8.8, sz * (WALL_T / 2 + 0.25));
     add(g, BX(1.4, 0.25, 1.65), clipMat('darkStone'), 0, 4.3, sz * (WALL_T / 2 + 0.78));
     add(g, BX(1.2, 0.25, 1.15), clipMat('darkStone'), 0, 7.7, sz * (WALL_T / 2 + 0.55));
   }
@@ -1651,11 +1570,11 @@ export function buttressedWall(f) {
 // a free-standing column used at the ends of colonnades
 export function columnPost() {
   const g = G();
-  add(g, BX(1.3, 0.4, 1.3, 3), clipMat('paleStone'), 0, 0.2, 0);
+  add(g, BX(1.3, 0.4, 1.3), clipMat('paleStone'), 0, 0.2, 0);
   add(g, CY(0.52, 0.58, 0.3, 14), clipMat('paleStone'), 0, 0.55, 0);
   add(g, CY(0.44, 0.5, WALL_H - 2.2, 14), clipMat('paleStone'), 0, (WALL_H - 2.2) / 2 + 0.7, 0);
   add(g, CY(0.62, 0.46, 0.4, 14), clipMat('paleStone'), 0, WALL_H - 1.3, 0);
-  add(g, BX(1.3, 0.9, 1.3, 3), clipMat('paleStone'), 0, WALL_H - 0.45, 0);
+  add(g, BX(1.3, 0.9, 1.3), clipMat('paleStone'), 0, WALL_H - 0.45, 0);
   return g;
 }
 
@@ -1663,9 +1582,9 @@ export function columnPost() {
 export function colonnade() {
   const g = G();
   const W = 2 * CELL;
-  add(g, BX(W + 0.6, 0.9, 1.1, 3), clipMat('paleStone'), 0, WALL_H - 0.45, 0);
-  add(g, BX(W + 0.8, 0.25, 1.3, 3), clipMat('paleStone'), 0, WALL_H - 0.95, 0);
-  add(g, BX(1.3, 0.4, 1.3, 3), clipMat('paleStone'), 0, 0.2, 0);
+  add(g, BX(W + 0.6, 0.9, 1.1), clipMat('paleStone'), 0, WALL_H - 0.45, 0);
+  add(g, BX(W + 0.8, 0.25, 1.3), clipMat('paleStone'), 0, WALL_H - 0.95, 0);
+  add(g, BX(1.3, 0.4, 1.3), clipMat('paleStone'), 0, 0.2, 0);
   add(g, CY(0.52, 0.58, 0.3, 14), clipMat('paleStone'), 0, 0.55, 0);
   add(g, CY(0.44, 0.5, WALL_H - 2.2, 14), clipMat('paleStone'), 0, (WALL_H - 2.2) / 2 + 0.7, 0);
   add(g, CY(0.62, 0.46, 0.4, 14), clipMat('paleStone'), 0, WALL_H - 1.3, 0);
@@ -1676,17 +1595,17 @@ export function colonnade() {
 export function fortressWall() {
   const g = G();
   const T = 1.6;
-  add(g, BX(CELL, WALL_H, T, 3), clipMat('stoneWall'), 0, WALL_H / 2, 0);
-  add(g, BX(CELL + 0.02, 0.3, T + 0.2, 3), clipMat('darkStone'), 0, WALL_H + 0.15, 0);
-  for (const x of [-0.85, 0.85]) add(g, BX(0.9, 1.3, T, 3), clipMat('stoneWall'), x, WALL_H + 0.95, 0);
+  add(g, BX(CELL, WALL_H, T), clipMat('stoneWall'), 0, WALL_H / 2, 0);
+  add(g, BX(CELL + 0.02, 0.3, T + 0.2), clipMat('darkStone'), 0, WALL_H + 0.15, 0);
+  for (const x of [-0.85, 0.85]) add(g, BX(0.9, 1.3, T), clipMat('stoneWall'), x, WALL_H + 0.95, 0);
   add(g, BX(0.25, 1.2, 0.3), clipMat('pitBlack'), 0, 5.5, T / 2 - 0.1);
   return g;
 }
 export function fortressPost() {
   const g = G();
-  add(g, BX(2.0, WALL_H + 0.6, 2.0, 3), clipMat('stoneWall'), 0, (WALL_H + 0.6) / 2, 0);
-  add(g, BX(2.3, 0.35, 2.3, 3), clipMat('darkStone'), 0, WALL_H + 0.75, 0);
-  for (const [x, z] of [[-0.75, -0.75], [0.75, -0.75], [-0.75, 0.75], [0.75, 0.75]]) add(g, BX(0.7, 1.3, 0.7, 3), clipMat('stoneWall'), x, WALL_H + 1.55, z);
+  add(g, BX(2.0, WALL_H + 0.6, 2.0), clipMat('stoneWall'), 0, (WALL_H + 0.6) / 2, 0);
+  add(g, BX(2.3, 0.35, 2.3), clipMat('darkStone'), 0, WALL_H + 0.75, 0);
+  for (const [x, z] of [[-0.75, -0.75], [0.75, -0.75], [-0.75, 0.75], [0.75, 0.75]]) add(g, BX(0.7, 1.3, 0.7), clipMat('stoneWall'), x, WALL_H + 1.55, z);
   return g;
 }
 
@@ -1699,8 +1618,8 @@ function straightSteps(g, { w, L, rise, m, tread }) {
   const n = Math.max(2, Math.round(rise / STEP_RISE)), run = L / n, h = rise / n;
   for (let k = 0; k < n; k++) {
     const top = (k + 1) * h, z = L / 2 - run / 2 - k * run;
-    add(g, BX(w, top, run + 0.01, 3), m, 0, top / 2, z);
-    if (tread) add(g, BX(w + 0.04, 0.09, run + 0.08, 3), tread, 0, top - 0.02, z + 0.04);
+    add(g, BX(w, top, run + 0.01), m, 0, top / 2, z);
+    if (tread) add(g, BX(w + 0.04, 0.09, run + 0.08), tread, 0, top - 0.02, z + 0.04);
   }
   return { n, run, h };
 }
@@ -1714,19 +1633,19 @@ export function stoneStairs(lenCells, rise) {
 
 export function grandStairs() {
   const g = G();
-  const L = 2 * CELL, rise = 6, w = 2 * CELL - 0.9;
+  const L = 2 * CELL, rise = 5, w = 2 * CELL - 0.9;
   const { n, run, h } = straightSteps(g, { w, L, rise, m: 'paleStone', tread: 'marble' });
   // a red runner up the middle
   for (let k = 0; k < n; k++) add(g, BX(1.6, 0.03, run + 0.02), 'redCloth', 0, (k + 1) * h + 0.035, L / 2 - run / 2 - k * run);
   // balustrades: cheek walls, balusters, a sloped handrail and newel posts
   for (const sx of [-1, 1]) {
     const x = sx * (CELL - 0.3);
-    for (let k = 0; k < n; k++) add(g, BX(0.55, (k + 1) * h + 0.2, run + 0.01, 3), 'paleStone', x, ((k + 1) * h + 0.2) / 2, L / 2 - run / 2 - k * run);
+    for (let k = 0; k < n; k++) add(g, BX(0.55, (k + 1) * h + 0.2, run + 0.01), 'paleStone', x, ((k + 1) * h + 0.2) / 2, L / 2 - run / 2 - k * run);
     for (let k = 0; k < n; k++) add(g, CY(0.07, 0.09, 2.4, 8), 'paleStone', x, (k + 1) * h + 0.2 + 1.2, L / 2 - run / 2 - k * run);
     const len = Math.hypot(L, rise);
     add(g, BX(0.42, 0.24, len + 0.2), 'paleStone', x, rise / 2 + h + 2.55, 0, Math.atan2(rise, L), 0, 0);
     for (const [z, y] of [[L / 2 - 0.25, h], [-L / 2 + 0.25, rise]]) {
-      add(g, BX(0.7, y + 3.4, 0.7, 3), 'paleStone', x, (y + 3.4) / 2, z);
+      add(g, BX(0.7, y + 3.4, 0.7), 'paleStone', x, (y + 3.4) / 2, z);
       add(g, SP(0.32, 10, 8), 'paleStone', x, y + 3.65, z);
     }
   }
@@ -1735,9 +1654,9 @@ export function grandStairs() {
 
 export function woodenStairs() {
   const g = G();
-  const L = 2 * CELL, rise = 6, w = CELL - 0.4;
+  const L = 2 * CELL, rise = 5, w = CELL - 0.4;
   const n = Math.round(rise / STEP_RISE), run = L / n, h = rise / n;
-  for (let k = 0; k < n; k++) add(g, BX(w, 0.16, run + 0.12, 3), 'planks', 0, (k + 1) * h - 0.08, L / 2 - run / 2 - k * run);
+  for (let k = 0; k < n; k++) add(g, BX(w, 0.16, run + 0.12), 'planks', 0, (k + 1) * h - 0.08, L / 2 - run / 2 - k * run);
   const len = Math.hypot(L, rise), ang = Math.atan2(rise, L);
   for (const sx of [-1, 1]) add(g, BX(0.18, 0.9, len), 'darkWood', sx * (w / 2 + 0.05), rise / 2 - 0.2, 0, ang, 0, 0);
   // one handrail on posts
@@ -1750,7 +1669,7 @@ export function woodenStairs() {
 
 export function earthRamp() {
   const g = G();
-  const L = 2 * CELL, rise = 3, w = CELL - 0.05;
+  const L = 2 * CELL, rise = 2.5, w = CELL - 0.05;
   const s = new THREE.Shape();
   s.moveTo(L / 2, 0); s.lineTo(-L / 2, 0); s.lineTo(-L / 2, rise); s.lineTo(L / 2, 0);
   const geo = new THREE.ExtrudeGeometry(s, { depth: w, bevelEnabled: false });
@@ -1769,14 +1688,14 @@ export function earthRamp() {
 
 export function spiralStair() {
   const g = G();
-  const rise = 9, sweep = Math.PI * 1.5, n = 15;
+  const rise = 7.5, sweep = Math.PI * 1.5, n = 15;
   add(g, CY(0.5, 0.58, rise + 1.2, 12), 'stone', 0, (rise + 1.2) / 2, 0);
   add(g, CY(0.75, 0.75, 0.3, 12), 'darkStone', 0, rise + 1.35, 0);
   const posts = [];
   for (let k = 0; k < n; k++) {
     const a = ((k + 0.5) / n) * sweep;
     const top = ((k + 1) / n) * rise;
-    const step = add(g, BX(2.35, 0.3, 1.05, 3), 'stoneWall', Math.sin(a) * 1.6, top - 0.15, Math.cos(a) * 1.6);
+    const step = add(g, BX(2.35, 0.3, 1.05), 'stoneWall', Math.sin(a) * 1.6, top - 0.15, Math.cos(a) * 1.6);
     step.rotation.y = a - Math.PI / 2;
     const px = Math.sin(a) * 2.75, pz = Math.cos(a) * 2.75;
     add(g, CY(0.05, 0.05, 3, 6), 'blackIron', px, top + 1.5, pz);

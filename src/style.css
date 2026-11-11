@@ -360,3 +360,104 @@ select.styled:hover { border-color: var(--line); }
 .height-row select:disabled { opacity: .45; cursor: default; }
 .tool span { font-size: 11px; }
 @media (max-width: 980px) { .starts.samples { grid-template-columns: repeat(2, 1fr); } }
+
+/* ================= parchment and ink =================
+   The editor and the dialogs are warm paper with dark ink. The play HUD sits over the 3D view,
+   so it keeps light text on dark glass (the second block restores the old values inside it). */
+:root {
+  --ink: #17140f;
+  --panel: rgba(243, 233, 208, 0.96);
+  --panel-solid: #f3e9d0;
+  --panel-2: #e9dcbb;
+  --panel-3: #dfcfa6;
+  --line: rgba(74, 48, 22, 0.42);
+  --line-soft: rgba(74, 48, 22, 0.17);
+  --vellum: #2b2117;
+  --muted: #6a5942;
+  --faint: #94836a;
+  --brass: #8a4a1c;
+  --brass-hi: #7b3413;
+  --verdigris: #2c6d63;
+  --oxblood: #a3322a;
+  --shadow: 0 10px 30px rgba(20, 12, 4, 0.5);
+}
+.walkhud {
+  --vellum: #e7dfcc; --muted: #a39c8c; --faint: #6f6a60; --brass: #c9a35a; --brass-hi: #e2c07a; --verdigris: #5aa197; --oxblood: #b4473b;
+  --line: rgba(201, 163, 90, 0.26); --line-soft: rgba(231, 223, 204, 0.09); --panel-2: #283041; --panel-3: #323b4f; --panel-solid: #1e2430;
+  color: var(--vellum);
+}
+/* paper: a faint grain, a ruled double border, no blur */
+.topbar, .palette, .status, .compass, .modal, .menu, .coach, .toast, .problem {
+  background-color: var(--panel-solid);
+  background-image: radial-gradient(ellipse at 20% 0%, rgba(255, 250, 232, 0.55), transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(150, 110, 60, 0.13), transparent 55%);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 0 0 3px var(--panel-solid), inset 0 0 0 4px var(--line-soft), var(--shadow);
+  backdrop-filter: none;
+}
+.wordmark { color: var(--brass-hi); }
+.btn { background: rgba(255, 251, 236, 0.6); border-color: var(--line-soft); }
+.btn:hover { background: #fffaea; border-color: var(--line); }
+.btn.on { background: rgba(138, 74, 28, 0.12); border-color: var(--brass); color: var(--brass-hi); }
+.btn.primary, .seg button.on { background: var(--brass); border-color: #5c2f10; color: #fdf5df; }
+.btn.primary:hover { background: #a0581f; }
+.btn.play { height: 36px; padding: 0 16px 0 12px; font-family: var(--display); font-size: 19px; font-weight: 400; letter-spacing: 0.02em; box-shadow: 0 2px 0 #5c2f10; }
+.btn.play .g { font-size: 13px; }
+.topbar .group { display: flex; align-items: center; gap: 4px; padding: 3px; border-radius: 6px; background: rgba(74, 48, 22, 0.07); }
+.topbar .group .btn { background: transparent; border-color: transparent; }
+.topbar .group .btn:hover { background: #fffaea; border-color: var(--line-soft); }
+.topbar .group .btn.on { background: rgba(138, 74, 28, 0.14); border-color: var(--brass); }
+.name-input:focus { background: #fffaea; }
+select.styled { background-color: rgba(255, 251, 236, 0.7); }
+.seg { background: rgba(74, 48, 22, 0.08); }
+.tool { background: rgba(255, 251, 236, 0.5); }
+.tool.on { background: rgba(138, 74, 28, 0.13); }
+.tool.erase.on, .status .where.bad, .toast.danger, .problem b { color: var(--oxblood); }
+.cat:hover { background: rgba(74, 48, 22, 0.06); }
+.cat.on { background: rgba(138, 74, 28, 0.13); }
+.card { background: rgba(255, 251, 236, 0.55); }
+.card:hover { background: #fffaea; }
+.card.on { background: rgba(138, 74, 28, 0.12); }
+.card .ph { background: radial-gradient(circle, rgba(138, 74, 28, 0.16), transparent 65%); }
+.menu button:hover, .start:hover { background: #fffaea; }
+.start { background: rgba(255, 251, 236, 0.55); }
+.menu .menu-title { padding: 6px 10px 2px; font-family: var(--display); font-size: 13px; letter-spacing: 0.06em; color: var(--faint); }
+.modal h1, .modal.summary.won h2 { color: var(--brass-hi); }
+.modal-bg { background: radial-gradient(ellipse at 50% 40%, rgba(30, 20, 10, 0.5), rgba(10, 7, 3, 0.86)); }
+.io-area { background: #fffaea; color: var(--vellum); }
+.dial-knob, .dial-knob.moon { box-shadow: 0 0 0 2px #f3e9d0, 0 1px 5px rgba(40, 24, 8, 0.6); }
+.dial-ticks { background: repeating-linear-gradient(90deg, rgba(74, 48, 22, 0.5) 0 1px, transparent 1px calc(100% / 24)); }
+.lightbox input[type=range]::-webkit-slider-thumb { background: var(--brass); box-shadow: 0 0 0 2px #f3e9d0; }
+.lightbox input[type=range]::-moz-range-thumb { background: var(--brass); box-shadow: 0 0 0 2px #f3e9d0; }
+.lb-ico svg { stroke: var(--brass); }
+.loading { background: #f3e9d0; }
+.compass .needle::after { background: linear-gradient(var(--brass), transparent); }
+:focus-visible { outline-color: var(--brass); }
+
+/* palette: wider, with a search box, recently used pieces and larger pictures */
+.palette { width: 352px; }
+.coach { left: 376px; }
+.items { padding-top: 8px; }
+.find { position: relative; margin: 0 0 8px; }
+.find input { width: 100%; height: 32px; padding: 0 28px 0 30px; border-radius: var(--r-sm); border: 1px solid var(--line-soft); background: #fffaea; color: var(--vellum); font: inherit; }
+.find input:focus { outline: none; border-color: var(--brass); }
+.find::before { content: '⌕'; position: absolute; left: 9px; top: 3px; font-size: 19px; color: var(--faint); }
+.find button { position: absolute; right: 3px; top: 3px; width: 26px; height: 26px; border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 15px; }
+.recent { display: flex; gap: 5px; margin: 0 0 10px; align-items: center; min-height: 44px; }
+.recent > span { font-size: 11.5px; color: var(--faint); writing-mode: vertical-rl; transform: rotate(180deg); }
+.recent button { width: 44px; height: 44px; padding: 2px; border-radius: var(--r-sm); border: 1px solid var(--line-soft); background: rgba(255, 251, 236, 0.55); cursor: pointer; }
+.recent button:hover { border-color: var(--brass); background: #fffaea; }
+.recent button.on { border-color: var(--brass); box-shadow: inset 0 0 0 1px var(--brass); }
+.recent img, .recent .ph { width: 38px; height: 38px; display: block; }
+.grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.card { min-height: 136px; padding: 6px 4px 8px; }
+.card img, .card .ph { width: 104px; height: 104px; }
+.card span { font-size: 13.5px; margin-top: 3px; }
+.card .gp { top: 5px; right: 7px; font-size: 11.5px; }
+.none { color: var(--muted); font-size: 13.5px; padding: 8px 2px; }
+@media (max-width: 760px) { .palette { width: auto; } .grid { grid-template-columns: repeat(3, 1fr); } .card img, .card .ph { width: 72px; height: 72px; } .card { min-height: 100px; } }
+
+/* the torch in the play HUD: lit or out */
+.torch-icon { position: absolute; top: 96px; right: 16px; width: 26px; height: 26px; opacity: 0.35; }
+.torch-icon svg { width: 26px; height: 26px; fill: none; stroke: #a39c8c; stroke-width: 1.6; stroke-linejoin: round; }
+.torch-icon.on { opacity: 1; filter: drop-shadow(0 0 6px rgba(255, 170, 70, 0.9)); }
+.torch-icon.on svg { stroke: #ffc070; fill: rgba(255, 170, 70, 0.35); }

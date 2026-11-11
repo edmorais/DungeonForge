@@ -12,7 +12,7 @@ const R = 0.85; // player radius (ft)
 const STEP = 1.7; // tallest ledge you can step up without stairs (ft)
 const EYE = 5.6;
 const GRAVITY = 64; // ft/s²
-const JUMP = 19; // take-off speed: a jump of about 2.8 ft, enough to gain one 3 ft level
+const JUMP = 19; // take-off speed: a jump of about 2.8 ft, enough to gain one 2.5 ft level
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 function distPointSeg(px, pz, ax, az, bx, bz) {
@@ -22,8 +22,8 @@ function distPointSeg(px, pz, ax, az, bx, bz) {
 }
 
 export class Walker {
-  constructor({ camera, dom, state, world, env, game, onPrompt, onToast, onExit, onSound }) {
-    Object.assign(this, { camera, dom, state, world, env, game, onPrompt, onToast, onExit, onSound: onSound || (() => {}) });
+  constructor({ camera, dom, state, world, env, game, onPrompt, onToast, onExit, onSound, onTorch }) {
+    Object.assign(this, { camera, dom, state, world, env, game, onPrompt, onToast, onExit, onSound: onSound || (() => {}), onTorch: onTorch || (() => {}) });
     this.active = false;
     this.setGear(null);
     this.yaw = 0;
@@ -107,6 +107,7 @@ export class Walker {
   toggleTorch() {
     this.handOn = !this.handOn;
     this.onToast(this.handOn ? 'Torch lit.' : 'Torch doused.');
+    this.onTorch(this.handOn);
   }
 
   // what the walker holds: a torch, and the weapon of the hero's class (none when just looking)
@@ -176,6 +177,8 @@ export class Walker {
     this.onGround = true;
     this.wantJump = false;
     this.shake = 0;
+    this.swing = 0;
+    this.onTorch(this.handOn);
   }
 
   // classId: one of the hero classes, or null to just look around
@@ -455,22 +458,22 @@ export class Walker {
     if (crossed) { this.ci = ni; this.cj = nj; this.game.stepped(ni, nj, this.onGround); }
   }
 
+  // Nothing is held on screen. The hero's weapon appears only for the moment of an attack:
+  // a blade sweeps up from the lower right across the view, a staff rises and thrusts forward.
   animateGear(dt) {
-    const t = performance.now() / 1000;
-    this.gearTorch.visible = this.handOn;
-    const sway = Math.sin(this.bob) * 0.02;
-    this.gear.position.set(sway, Math.abs(Math.cos(this.bob)) * 0.015, 0);
-    if (this.swing > 0) this.swing -= dt;
-    const s = Math.max(0, this.swing || 0) / 0.25;
-    const arc = Math.sin(s * Math.PI);
+    this.gearTorch.visible = false; // the torch is light and a HUD icon, not a thing on screen
+    if (this.swing > 0) this.swing -= dt * 0.7; // game.js sets 0.25, which lasts about a third of a second
+    const p = 1 - Math.max(0, this.swing) / 0.25; // 0 at the start of the strike, 1 at its end
+    const sword = this.gearSword;
+    sword.visible = this.swing > 0 && !!this.game.cls;
+    if (!sword.visible) return;
+    const arc = Math.sin(p * Math.PI);
     if (this.gearCasts) {
-      // a staff is thrust forward and up as the spell leaves it
-      this.gearSword.rotation.set(this.swordRest.x - arc * 0.75, this.swordRest.y, this.swordRest.z + arc * 0.2);
-      this.gearSword.position.set(this.swordPos.x - arc * 0.1, this.swordPos.y + arc * 0.14, this.swordPos.z - arc * 0.4);
+      sword.rotation.set(this.swordRest.x - arc * 0.75, this.swordRest.y, this.swordRest.z + arc * 0.2);
+      sword.position.set(this.swordPos.x - arc * 0.1, this.swordPos.y - 0.7 * (1 - arc) + arc * 0.14, this.swordPos.z - arc * 0.4);
     } else {
-      this.gearSword.rotation.set(this.swordRest.x - arc * 1.3, this.swordRest.y - arc * 0.4, this.swordRest.z + arc * 0.9);
-      this.gearSword.position.set(this.swordPos.x - arc * 0.25, this.swordPos.y, this.swordPos.z - arc * 0.2);
+      sword.rotation.set(this.swordRest.x - arc * 1.2, this.swordRest.y - 0.5 + p * 0.9, this.swordRest.z - 0.5 + p * 1.9);
+      sword.position.set(this.swordPos.x + 0.25 - p * 1.0, this.swordPos.y - 0.45 * (1 - arc), this.swordPos.z - arc * 0.2);
     }
-    this.gearTorch.children.forEach((c) => { if (c.userData.flame) { const k = 1 + Math.sin(t * 13) * 0.1; c.scale.set(1, k, 1); } });
   }
 }

@@ -409,3 +409,137 @@ function groundTex(cols, speck, seed, speckAmt = 1) {
     o[3] = n1 * 0.6 + blade * 0.4;
   });
 }
+
+// ---------- painted-miniature surfaces ----------
+// The main wall and floor textures, painted the way a tabletop set is: a flat base colour per
+// stone, a dark wash in the joints and towards the edges, and a dry-brushed light edge on the
+// side the light comes from (up and left). They replace the plainer versions above.
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const JOINT = [38, 33, 29];
+// d: distance to the nearest joint; lit: 1 where that joint is above or to the left
+function paintStone(o, base, d, gap, lit, n, grain, joint = JOINT) {
+  if (d < gap) { setCol(o, joint, 0.75 + n * 0.5); o[3] = 0.04; return; }
+  const e = clamp01((d - gap) / 0.05);
+  const wash = 0.6 + 0.4 * Math.sqrt(e);
+  const brush = lit * (1 - clamp01((d - gap) / 0.02)) * (0.5 + grain);
+  const tone = wash * (0.8 + (Math.round(n * 3) / 3 - 0.5) * 0.2 + (grain - 0.5) * 0.14) + brush * 0.3;
+  setCol(o, base, tone);
+  o[3] = 0.25 + e * 0.5 + n * 0.2 + brush * 0.1;
+}
+
+Object.assign(LIB, {
+  flagstone() {
+    const rects = splitRects(mulberry(11), 0.2);
+    const cols = [0x9c968b, 0x868079, 0x95897a, 0x7f848c].map(hex);
+    return paint(512, (u, v, o) => {
+      let r = rects[0];
+      for (const q of rects) if (u >= q[0] && u < q[0] + q[2] && v >= q[1] && v < q[1] + q[3]) { r = q; break; }
+      const l = u - r[0], t = v - r[1];
+      const d = Math.min(l, r[0] + r[2] - u, t, r[1] + r[3] - v);
+      const n = fbm(u, v, 8, 4, 3), grain = fbm(u, v, 48, 2, 9);
+      paintStone(o, cols[Math.floor(r[4] * 3.99)], d, 0.011 + n * 0.006, d === t || d === l ? 1 : 0.12, n, grain);
+      if (d > 0.03 && Math.abs(fbm(u + r[4], v, 6, 3, 5) - 0.5) < 0.006) { o[0] *= 0.58; o[1] *= 0.58; o[2] *= 0.58; o[3] -= 0.2; }
+    });
+  },
+  moss() {
+    const base = tex('flagstone'), S = base.canvas.width;
+    const src = base.canvas.getContext('2d').getImageData(0, 0, S, S).data;
+    return paint(512, (u, v, o) => {
+      const k = (Math.min(S - 1, Math.floor(v * S)) * S + Math.min(S - 1, Math.floor(u * S))) * 4;
+      const m = fbm(u, v, 5, 4, 77), tuft = fbm(u, v, 40, 2, 78);
+      const t = clamp01((m - 0.44) * 5);
+      mixCol(o, [src[k], src[k + 1], src[k + 2]], tuft > 0.55 ? [96, 132, 52] : [58, 92, 40], t * 0.9);
+      o[3] = 0.4 + m * 0.2 + t * tuft * 0.3;
+    });
+  },
+  cobble() {
+    const pts = voronoiPts(mulberry(21), 34);
+    const cols = [0x8f887c, 0x756f66, 0x857a6c, 0x6f747b].map(hex);
+    return paint(512, (u, v, o) => {
+      const [p, edge] = voronoi(pts, u, v);
+      const n = fbm(u, v, 12, 3, 4), grain = fbm(u, v, 56, 2, 6);
+      let dy = v - p[1];
+      if (dy > 0.5) dy -= 1; else if (dy < -0.5) dy += 1;
+      paintStone(o, cols[Math.floor(p[2] * 3.99)], edge * 0.5, 0.008, dy < 0 ? 1 : 0.1, n, grain);
+      o[3] = edge < 0.016 ? 0.04 : 0.2 + clamp01(edge / 0.09) * 0.7;
+    });
+  },
+  stoneWall() {
+    const rand = mulberry(42), rows = 4, rowData = [];
+    for (let r = 0; r < rows; r++) {
+      const n = 2 + Math.floor(rand() * 2), cuts = [];
+      let acc = 0;
+      for (let k = 0; k < n; k++) { acc += 0.6 + rand(); cuts.push(acc); }
+      rowData.push({ cuts: cuts.map((c) => c / acc), off: rand(), tones: cuts.map(() => rand()) });
+    }
+    const cols = [0xa59e92, 0x8d877d, 0x9b9280, 0x878c92].map(hex);
+    return paint(512, (u, v, o) => {
+      const r = Math.floor(v * rows), lv = v * rows - r, rd = rowData[r];
+      const uu = (u + rd.off) % 1;
+      let k = 0;
+      while (k < rd.cuts.length - 1 && uu > rd.cuts[k]) k++;
+      const left = k === 0 ? 0 : rd.cuts[k - 1];
+      const l = uu - left, t = lv / rows;
+      const d = Math.min(l, rd.cuts[k] - uu, t, (1 - lv) / rows);
+      const n = fbm(u, v, 8, 4, 12), grain = fbm(u, v, 48, 2, 4);
+      paintStone(o, cols[Math.floor(rd.tones[k] * 3.99)], d, 0.011 + n * 0.006, d === t || d === l ? 1 : 0.12, n, grain);
+      // a chip out of a corner here and there
+      if (d > 0.012 && d < 0.05 && fbm(u, v, 14, 2, 31) > 0.78) { o[0] *= 0.7; o[1] *= 0.7; o[2] *= 0.7; o[3] -= 0.18; }
+    });
+  },
+  brick() {
+    const cols = [0x9c5038, 0x84402c, 0xa85e40, 0x7b3a2c].map(hex);
+    return paint(512, (u, v, o) => {
+      const rows = 8, r = Math.floor(v * rows), lv = v * rows - r;
+      const cn = 4, uu = (u * cn + (r % 2) * 0.5) % cn;
+      const c = Math.floor(uu), lu = uu - c;
+      const l = lu / cn, t = lv / rows;
+      const d = Math.min(l, (1 - lu) / cn, t, (1 - lv) / rows);
+      const n = fbm(u, v, 16, 3, 2), grain = fbm(u, v, 64, 2, 8);
+      paintStone(o, cols[Math.floor(hash2(c, r, 5) * 3.99)], d, 0.009, d === t || d === l ? 1 : 0.12, n, grain, [150, 142, 128]);
+      if (d < 0.009) o[3] = 0.12;
+    });
+  },
+  planks() {
+    const cols = [0x8c5c34, 0x744a28, 0x9a6a3c, 0x66401f].map(hex), gapC = hex(0x21150d);
+    return paint(512, (u, v, o) => {
+      const plank = Math.floor(u * 5), lu = u * 5 - plank;
+      const off = hash2(plank, 3, 7), seg = Math.floor(v + off * 3) % 2, vv = (v + off) % 1;
+      if (lu < 0.035 || lu > 0.965) { setCol(o, gapC); o[3] = 0.04; return; }
+      const grain = fbm(lu * 0.2, vv, 4, 4, plank * 3 + seg) * 0.6 + Math.sin((lu * 6 + fbm(lu, vv, 3, 3, plank) * 8) * 3) * 0.1;
+      const joint = Math.abs((v + off * 3) % 1) < 0.005;
+      const edge = lu < 0.09 ? 0.2 : lu > 0.9 ? -0.16 : 0; // a light edge on the left, a shadow on the right
+      setCol(o, cols[Math.floor(hash2(plank, seg, 2) * 3.99)], joint ? 0.4 : 0.8 + grain * 0.32 + edge);
+      if (Math.abs(lu - 0.5) < 0.045 && (Math.abs(vv - 0.08) < 0.011 || Math.abs(vv - 0.92) < 0.011)) setCol(o, [46, 44, 48]);
+      o[3] = 0.5 + grain * 0.35;
+    });
+  },
+  caveRock() {
+    const pts = voronoiPts(mulberry(77), 30);
+    const A = hex(0x6a645b), B = hex(0x45403a);
+    return paint(512, (u, v, o) => {
+      const [p, edge] = voronoi(pts, u, v);
+      const n = fbm(u, v, 5, 5, 99), grain = fbm(u, v, 40, 2, 7);
+      // broken facets: each one a flat tone, with a light ridge where two meet
+      const ridge = 1 - clamp01(edge / 0.03);
+      mixCol(o, A, B, n, 0.72 + p[2] * 0.4 + (grain - 0.5) * 0.16 + ridge * 0.22);
+      o[3] = clamp01(edge * 5) * 0.55 + n * 0.45;
+    });
+  },
+  // the cut side of raised or sunken earth: layers of soil with stones in them
+  strata() {
+    const pts = voronoiPts(mulberry(15), 46);
+    const bands = [0x7a5a3c, 0x65482e, 0x8a6a48, 0x5a3f28, 0x6f5236].map(hex);
+    return paint(512, (u, v, o) => {
+      const n = fbm(u, v, 6, 4, 33), grain = fbm(u, v, 48, 2, 34);
+      const y = v * 6 + (fbm(u, 0.5, 4, 3, 35) - 0.5) * 1.6;
+      const band = Math.floor(y), f = y - band;
+      const seam = f < 0.07 ? 0.72 : 1;
+      setCol(o, bands[((band % 5) + 5) % 5], (0.82 + n * 0.3 + (grain - 0.5) * 0.2) * seam);
+      o[3] = 0.4 + n * 0.3 - (seam < 1 ? 0.2 : 0);
+      const [p, , d] = voronoi(pts, u, v);
+      const size = 0.012 + p[2] * 0.02;
+      if (d < size) { setCol(o, [150, 142, 128], 0.75 + (1 - d / size) * 0.35 + (v < p[1] ? 0.12 : -0.1)); o[3] = 0.6 + (1 - d / size) * 0.4; }
+    });
+  },
+});

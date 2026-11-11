@@ -2,7 +2,7 @@
 
 **Build a fantasy dungeon square by square, set the land and the hour around it, then walk its halls yourself.**
 
-Dungeon Forge is a 3D map maker for tabletop role-playing games and anyone who likes building things. Everything snaps to a grid of 3 ft squares, the scale most tabletop games use. Lay out floors and walls, hang doors, light torches, furnish rooms and hide treasure (and a few monsters). Then set the landscape, choose the hour and the light, and step inside in first person. When you are done, export a top-down battle map for your virtual tabletop.
+Dungeon Forge is a 3D map maker for tabletop role-playing games and anyone who likes building things. Everything snaps to a grid of 5 ft squares, the scale most tabletop games use. Lay out floors and walls, hang doors, light torches, furnish rooms and hide treasure (and a few monsters). Then set the landscape, choose the hour and the light, and step inside in first person. When you are done, export a top-down battle map for your virtual tabletop.
 
 It runs in your web browser. Try it at <https://edmorais.github.io/DungeonForge/> !
 
@@ -31,7 +31,7 @@ Made with Claude Opus 5.5.
 
 ## What you can make
 
-- **Dungeons, keeps, camps, ruins and caves** on a site of 192 × 144 ft (64 × 48 squares).
+- **Dungeons, keeps, camps, ruins and caves** on a site of 320 × 240 ft (64 × 48 squares).
 - **125 pieces in ten groups.**
 
   | Group | Examples |
@@ -76,7 +76,7 @@ Made with Claude Opus 5.5.
 
 3. **Look around.** Drag to slide the view, right-drag to turn it, scroll to zoom.
 4. **Build something.** Click a piece in the palette on the left, then click the map to place it. Press **Esc** when you are done.
-5. **Walk through it.** Press **Walk through** (or **V**), click once to look around with the mouse, and use **W A S D** to move. Press **Esc** to come back.
+5. **Walk through it.** Press **Play** (or **V**), click once to look around with the mouse, and use **W A S D** to move. Press **Esc** to come back.
 
 Your work is saved in the browser as you go. Next time, choose **Continue where you left off** on the welcome screen. To see the welcome screen again, press **N** or choose **New dungeon…** in the ☰ menu.
 
@@ -95,11 +95,11 @@ Your work is saved in the browser as you go. Next time, choose **Continue where 
 | Time dial | Drag to set the hour. The sky, sun and shadows follow. |
 | ▶ | Lets time pass: a full day in two minutes. |
 | ☀ slider | Overall light, from 0% (only flames light the map) to 200%. |
-| Walls | Cuts walls down to full height, 6 ft or 3 ft so you can see into rooms. |
+| Walls | Cuts walls down to full height, 5 ft or 2.5 ft so you can see into rooms. |
 | # | Shows or hides the grid. |
 | ♪ | Sound on or off. |
 | ↶ ↷ | Undo and redo. |
-| **Walk through** | Enter the first-person walk. |
+| **Play** | Play the map in first person. |
 | ☰ | The menu: new dungeon, random keep, import and export, picture, battle map, top-down view, graphics quality, clear everything and the controls list. |
 
 **Left panel**
@@ -143,7 +143,7 @@ How the different kinds of pieces snap:
 - **Floors** fill whole squares. Drag to fill a rectangle.
 - **Walls, doors and windows** sit on the lines between squares. Drag along a line to draw a run of wall. Press **R** to flip which side faces out.
 - **Doors, arches and windows** set into an existing wall take on that wall's stone, brick or rock.
-- **Wide pieces** (great doors, castle gates, great windows, colonnades and more) cover two or three lines (6 or 9 ft).
+- **Wide pieces** (great doors, castle gates, great windows, colonnades and more) cover two or three lines (10 or 15 ft).
 - **Furniture, loot and creatures** fill whole squares. Their size is shown in the description (from 1 × 1 up to 3 × 3 squares).
 - **Wall decorations** (torches, banners, shields) snap to the nearest wall side. Point near the wall you want.
 - **Small items** (candles, potions, coins, gems) sit on top of tables, barrels and altars when you place them there.
@@ -164,17 +164,17 @@ Made a mistake? **Ctrl+Z** undoes it and **Ctrl+Shift+Z** redoes it.
 
 ### Seeing inside
 
-Walls are 10 ft tall, so from above they hide your rooms. Press **C** (or the **Walls** button) to cut them down to 6 ft or 3 ft. This changes only the view, not your map. Chandeliers and other ceiling pieces are hidden while walls are cut down.
+Walls are 10 ft tall, so from above they hide your rooms. Press **C** (or the **Walls** button) to cut them down to 5 ft or 2.5 ft. This changes only the view, not your map. Chandeliers and other ceiling pieces are hidden while walls are cut down.
 
 ---
 
 ## Raising and sinking the ground
 
-Any square can be raised or lowered in steps of 3 ft (one level), up to 30 ft high or 30 ft deep.
+Any square can be raised or lowered in steps of 2.5 ft (one level, half a square), up to 30 ft high or 30 ft deep.
 
 1. Choose the **Height** tool (**L**).
 2. Pick a mode in the panel:
-   - **Raise**: each click or drag lifts the squares one level (3 ft).
+   - **Raise**: each click or drag lifts the squares one level (2.5 ft).
    - **Lower**: each click or drag sinks them one level.
    - **Set to**: makes every square you drag over exactly the height you choose. This is the quickest way to level a whole platform or pit.
 3. Click a square, or drag over a rectangle.
@@ -195,13 +195,13 @@ Every flight of stairs climbs **toward its back**, starting from the square it s
 
 | Stair | Squares | Climbs |
 | --- | --- | --- |
-| Steps | 1 × 1 | 3 ft (1 level) |
-| Stone stairs | 1 × 2 | 6 ft (2 levels) |
-| Long stairs | 1 × 3 | 9 ft (3 levels) |
-| Grand stairs (balustrades and a red runner) | 2 × 2 | 6 ft (2 levels) |
-| Wooden stairs (with a handrail) | 1 × 2 | 6 ft (2 levels) |
-| Spiral stair (three-quarters of a turn round a pillar, leaving on its left) | 2 × 2 | 9 ft (3 levels) |
-| Earth ramp | 1 × 2 | 3 ft (1 level) |
+| Steps | 1 × 1 | 2.5 ft (1 level) |
+| Stone stairs | 1 × 2 | 5 ft (2 levels) |
+| Long stairs | 1 × 3 | 7.5 ft (3 levels) |
+| Grand stairs (balustrades and a red runner) | 2 × 2 | 5 ft (2 levels) |
+| Wooden stairs (with a handrail) | 1 × 2 | 5 ft (2 levels) |
+| Spiral stair (three-quarters of a turn round a pillar, leaving on its left) | 2 × 2 | 7.5 ft (3 levels) |
+| Earth ramp | 1 × 2 | 2.5 ft (1 level) |
 
 **Example: a platform with stairs up to it**
 
@@ -248,7 +248,7 @@ The ♪ button turns on ambient sound: wind that suits the landscape, crackling 
 
 ## Walking through your dungeon
 
-Press **Walk through** (or **V**). Click once to look around with the mouse.
+Press **Play** (or **V**). Click once to look around with the mouse.
 
 A map with creatures, traps, keys, a locked door or an exit is a game. You are asked to **choose a hero**, or to *just look around* (no fights, no traps, every door opens). A map with none of these is simply walked through.
 
@@ -264,22 +264,24 @@ A map with creatures, traps, keys, a locked door or an exit is a game. You are a
 | Peaceful mode (creatures do not attack) | P |
 | Pause the walk and go back to the editor | Esc |
 
-**Pausing.** Esc pauses a walk; it does not end it. The **Walk through** button then reads **Resume walk**, and pressing it (or V) offers to resume where you left it, fight and all, or to start again. A paused walk belongs to the map as it was: **any change to the map resets it**, and the app warns you when you pick up a building tool.
+**What you see.** Nothing is held in front of you. Your weapon shows only for the moment of an attack, and your torch is the light around you plus a small flame icon under your health (F puts it out).
+
+**Pausing.** Esc pauses a walk; it does not end it. The **Play** button then reads **Resume**, and pressing it (or V) offers to resume where you left it, fight and all, or to start again. A paused walk belongs to the map as it was: **any change to the map resets it**, and the app warns you when you pick up a building tool.
 
 ### The heroes
 
 | Hero | Health | AC | Attack | Special action |
 | --- | --- | --- | --- | --- |
 | **Fighter** | 48 | 17 | Longsword, +7 to hit, 1d8+5 | *Second wind* (2): regain 1d10+6 health without using your action |
-| **Rogue** | 36 | 15 | Short sword, +7, 1d6+5 | *Sneak attack* (3): roll two d20, keep the higher, deal 3d6 more. Also spots hidden traps 6 ft away, disarms traps well and can try to pick a lock |
+| **Rogue** | 36 | 15 | Short sword, +7, 1d6+5 | *Sneak attack* (3): roll two d20, keep the higher, deal 3d6 more. Also spots hidden traps 10 ft away, disarms traps well and can try to pick a lock |
 | **Wizard** | 30 | 13 | Fire bolt, +7, 2d8, up to 60 ft away | *Magic missile* (3): 3d4+6 that never misses |
 | **Cleric** | 42 | 17 | Mace, +6, 1d8+4, and 1d8 more against the undead | *Cure wounds* (3): regain 2d8+5 health |
 
-The rogue moves 36 ft a turn, the others 30 ft. Special actions come back when you drink from a fountain or a well.
+The rogue moves 35 ft a turn (7 squares), the others 30 ft (6 squares). Special actions come back when you drink from a fountain or a well.
 
 ### Fights
 
-- A creature **notices** you from 18 ft away (24 ft if it can attack from a distance) when no wall or closed door is in the way. Creatures standing near it join in. Everyone rolls **initiative** (a d20) to set the order of turns.
+- A creature **notices** you from 20 ft away (30 ft if it can attack from a distance) when no wall or closed door is in the way. Creatures standing near it join in. Everyone rolls **initiative** (a d20) to set the order of turns.
 - **On your turn** the squares you can still walk to are outlined on the floor. You may move up to your speed, counted in squares as you cross them, and take **one action**: an attack, most special actions, drinking a potion, opening a chest or disarming a trap. Opening a door is free. Press **Enter** to end your turn; it ends by itself when you have nothing left.
 - **An attack** is a d20 plus the attacker's bonus against the target's armour class (AC). A 20 on the die always hits and rolls the damage dice twice; a 1 always misses. Every roll is shown on screen, the damage floats up from the creature, and each creature in the fight carries a health bar.
 - **On their turns** creatures walk towards you, around walls and each other, and strike when they reach you. Some attack from a distance. They do not open doors, so a closed door stops them.
@@ -306,7 +308,7 @@ To place them yourself, the pieces are under **Adventure** in the palette (the l
 - **Doors** swing open and closed. Secret doors look like the wall until you open them.
 - **Chests** hold gold, shown in your purse. One kind of chest is a mimic, and it bites.
 - **Healing.** Drink from a fountain or well to heal fully (not during a fight), or drink a potion for 4d4+4 health.
-- **Climbing.** You can walk up stairs and ramps, and step up ledges up to about a foot and a half high. A jump gains one 3 ft level. Anything taller needs stairs.
+- **Climbing.** You can walk up stairs and ramps, and step up ledges up to about a foot and a half high. A jump gains one 2.5 ft level. Anything taller needs stairs.
 - **Falling.** If you walk off a ledge you fall. A hero takes 1d6 for every 10 ft.
 - **The minimap** in the corner shows the floors, walls and loot around you, the exit in violet and the creatures you are fighting in red. Higher ground is lighter and lower ground darker.
 - **In the dark void** you can only walk on squares that have a floor.
@@ -322,7 +324,7 @@ To place them yourself, the pieces are under **Adventure** in the palette (the l
 | **Export a map** | ☰ → *Export this map…* (Ctrl+S). Download it as a `.dungeon.json` file, or copy its text to paste into a message or a note. |
 | **Import a map** | ☰ → *Import a map…* (Ctrl+O). Choose a `.dungeon.json` file, or paste map text and press *Import text*. |
 | **Take a picture** | ☰ → *Take a picture* saves the current view as an image. |
-| **Battle map** | ☰ → *Export battle map…* makes a top-down image of everything you built, at 50, 70 or 100 pixels per 3 ft square, with or without the grid. It uses even midday light unless you choose the current time of day. Set your virtual tabletop's grid to the same number of pixels and the squares line up. |
+| **Battle map** | ☰ → *Export battle map…* makes a top-down image of everything you built, at 50, 70 or 100 pixels per 5 ft square, with or without the grid. It uses even midday light unless you choose the current time of day. Set your virtual tabletop's grid to the same number of pixels and the squares line up. |
 | **Start over** | ☰ → *Clear everything* empties the map. ☰ → *New dungeon…* brings back the welcome screen. |
 
 > **Keep a copy of maps you care about.** The autosave lives in your browser, and clearing your browsing data deletes it. Export a file now and then.
@@ -355,7 +357,7 @@ To place them yourself, the pieces are under **Adventure** in the palette (the l
 | Overall light | - and = |
 | Welcome screen | N |
 | Import / export a map | Ctrl+O / Ctrl+S |
-| Walk through | V |
+| Play | V |
 | All controls | ? |
 
 ### Walking

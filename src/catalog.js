@@ -60,10 +60,10 @@ export const ITEMS = [
   { id: 'ruinWall', name: 'Crumbled wall', cat: 'wall', kind: 'edge', post: 'low', frame: 'stoneWall', blocks: true, seeThrough: true, cap: null, h: 5.4, build: () => M.crumbledWall(), desc: 'Broken masonry from an older age.' },
   { id: 'hedge', name: 'Hedge', cat: 'wall', kind: 'edge', post: 'hedge', frame: 'hedge', blocks: true, cap: null, h: 5, build: () => M.hedgeWall(), desc: 'Garden mazes and estate grounds.' },
   { id: 'fortressWall', name: 'Fortress wall', cat: 'wall', kind: 'edge', post: 'fortress', frame: 'stoneWall', blocks: true, cap: 'full', capT: 1.6, h: WALL_H + 2, build: () => M.fortressWall(), desc: 'Thick curtain wall with battlements and arrow slits.' },
-  { id: 'greatWindow', name: 'Great window', cat: 'wall', kind: 'edge', span: 2, framed: true, blocks: true, seeThrough: true, cap: 'full', h: WALL_H, build: (f) => M.greatWindow(f), desc: 'A tall arched window, 6 ft wide.' },
-  { id: 'alcoveWall', name: 'Wall with alcove', cat: 'wall', kind: 'edge', span: 2, framed: true, blocks: true, cap: 'full', h: WALL_H, light: { c: 0xffb060, i: 10, d: 12, p: [0, 2.2, -0.6], f: 0.5 }, build: (f) => M.alcoveWall(f), desc: 'A 6 ft wall with a candlelit shrine niche.' },
-  { id: 'buttressWall', name: 'Buttressed wall', cat: 'wall', kind: 'edge', span: 2, framed: true, blocks: true, cap: 'full', h: WALL_H, build: (f) => M.buttressedWall(f), desc: 'A 6 ft wall braced by stone buttresses.' },
-  { id: 'colonnade', name: 'Colonnade', cat: 'wall', kind: 'edge', span: 2, post: 'column', blocks: false, cap: null, h: WALL_H, build: () => M.colonnade(), desc: 'Columns under a lintel, 6 ft wide. Walk between them.' },
+  { id: 'greatWindow', name: 'Great window', cat: 'wall', kind: 'edge', span: 2, framed: true, blocks: true, seeThrough: true, cap: 'full', h: WALL_H, build: (f) => M.greatWindow(f), desc: 'A tall arched window, 10 ft wide.' },
+  { id: 'alcoveWall', name: 'Wall with alcove', cat: 'wall', kind: 'edge', span: 2, framed: true, blocks: true, cap: 'full', h: WALL_H, light: { c: 0xffb060, i: 10, d: 12, p: [0, 2.2, -0.6], f: 0.5 }, build: (f) => M.alcoveWall(f), desc: 'A 10 ft wall with a candlelit shrine niche.' },
+  { id: 'buttressWall', name: 'Buttressed wall', cat: 'wall', kind: 'edge', span: 2, framed: true, blocks: true, cap: 'full', h: WALL_H, build: (f) => M.buttressedWall(f), desc: 'A 10 ft wall braced by stone buttresses.' },
+  { id: 'colonnade', name: 'Colonnade', cat: 'wall', kind: 'edge', span: 2, post: 'column', blocks: false, cap: null, h: WALL_H, build: () => M.colonnade(), desc: 'Columns under a lintel, 10 ft wide. Walk between them.' },
   { id: 'fence', name: 'Wooden fence', cat: 'wall', kind: 'edge', post: 'fence', frame: 'stoneWall', blocks: true, seeThrough: true, cap: null, h: 3.4, build: () => M.woodFence(), desc: 'Pens, paddocks and farmyards.' },
 
   // ---------------- doors / openings (edges) ----------------
@@ -72,24 +72,24 @@ export const ITEMS = [
   { id: 'doubleDoor', name: 'Double door', cat: 'door', kind: 'edge', door: true, framed: true, blocks: true, cap: 'jambs', h: WALL_H, build: (f) => M.doubleDoor(f), desc: 'Twin leaves for great halls.' },
   { id: 'portcullis', name: 'Portcullis', cat: 'door', kind: 'edge', door: true, framed: true, blocks: true, seeThrough: true, cap: 'jambs', h: WALL_H, build: (f) => M.portcullis(f), desc: 'An iron gate that lifts into the wall.' },
   { id: 'archway', name: 'Archway', cat: 'door', kind: 'edge', framed: true, blocks: false, cap: 'jambs', h: WALL_H, build: (f) => M.archway(f), desc: 'An open, vaulted passage.' },
-  { id: 'greatDoors', name: 'Great doors', cat: 'door', kind: 'edge', span: 2, door: true, framed: true, blocks: true, cap: 'jambs', jamb: 0.6, h: WALL_H, build: (f) => M.greatDoors(f), desc: 'Iron-banded double doors, 6 ft wide.' },
-  { id: 'grandArch', name: 'Grand archway', cat: 'door', kind: 'edge', span: 2, framed: true, blocks: false, cap: 'jambs', jamb: 0.65, h: WALL_H, build: (f) => M.grandArch(f), desc: 'An open vaulted arch, 6 ft wide.' },
-  { id: 'castleGate', name: 'Castle gate', cat: 'door', kind: 'edge', span: 3, door: true, framed: true, blocks: true, seeThrough: true, cap: 'jambs', jamb: 0.8, h: WALL_H, build: (f) => M.castleGate(f), desc: 'A 9 ft portcullis between buttresses.' },
-  { id: 'palisadeGate', name: 'Palisade gate', cat: 'door', kind: 'edge', span: 2, door: true, framed: true, fixedFrame: 'log', blocks: true, cap: null, h: 10, build: () => M.palisadeGate(), desc: 'Log gates for a palisade fort, 6 ft wide.' },
+  { id: 'greatDoors', name: 'Great doors', cat: 'door', kind: 'edge', span: 2, door: true, framed: true, blocks: true, cap: 'jambs', jamb: 1.2, h: WALL_H, build: (f) => M.greatDoors(f), desc: 'Iron-banded double doors, 10 ft wide.' },
+  { id: 'grandArch', name: 'Grand archway', cat: 'door', kind: 'edge', span: 2, framed: true, blocks: false, cap: 'jambs', jamb: 1.3, h: WALL_H, build: (f) => M.grandArch(f), desc: 'An open vaulted arch, 10 ft wide.' },
+  { id: 'castleGate', name: 'Castle gate', cat: 'door', kind: 'edge', span: 3, door: true, framed: true, blocks: true, seeThrough: true, cap: 'jambs', jamb: 1.7, h: WALL_H, build: (f) => M.castleGate(f), desc: 'A 15 ft portcullis between buttresses.' },
+  { id: 'palisadeGate', name: 'Palisade gate', cat: 'door', kind: 'edge', span: 2, door: true, framed: true, fixedFrame: 'log', blocks: true, cap: null, h: 10, build: () => M.palisadeGate(), desc: 'Log gates for a palisade fort, 10 ft wide.' },
   { id: 'lockedDoor', name: 'Locked door', cat: 'door', kind: 'edge', door: true, locked: true, framed: true, blocks: true, cap: 'jambs', h: WALL_H, build: (f) => M.lockedDoor(f), desc: 'Needs a key in walk mode. A rogue can try to pick it.' },
   { id: 'secretDoor', name: 'Secret door', cat: 'door', kind: 'edge', door: true, secret: true, framed: true, blocks: true, cap: 'full', h: WALL_H, build: (f) => M.secretDoor(f), desc: 'Looks like the wall. Pivots open.' },
   { id: 'window', name: 'Barred window', cat: 'door', kind: 'edge', framed: true, blocks: true, seeThrough: true, cap: 'full', h: WALL_H, build: (f) => M.windowWall(f, false), desc: 'Lets daylight into the halls.' },
   { id: 'stainedWindow', name: 'Stained glass', cat: 'door', kind: 'edge', framed: true, blocks: true, cap: 'full', h: WALL_H, build: (f) => M.windowWall(f, true), desc: 'Coloured glass for chapels.' },
-  { id: 'steps', name: 'Steps', cat: 'stairs', kind: 'obj', layer: 'ground', size: [1, 1], stair: { rise: 3 }, build: () => M.stoneStairs(1, 3), desc: 'Climbs 3 ft in one square. Raise the square behind it one level.' },
-  { id: 'stairs', name: 'Stone stairs', cat: 'stairs', kind: 'obj', layer: 'ground', size: [1, 2], stair: { rise: 6 }, build: () => M.stoneStairs(2, 6), desc: 'Climbs 6 ft over two squares. Raise the square behind it two levels.' },
-  { id: 'stairsLong', name: 'Long stairs', cat: 'stairs', kind: 'obj', layer: 'ground', size: [1, 3], stair: { rise: 9 }, build: () => M.stoneStairs(3, 9), desc: 'Climbs 9 ft over three squares.' },
-  { id: 'grandStairs', name: 'Grand stairs', cat: 'stairs', kind: 'obj', layer: 'ground', size: [2, 2], stair: { rise: 6 }, build: () => M.grandStairs(), desc: 'Marble stairs with balustrades and a runner, 6 ft wide, climbing 6 ft.' },
-  { id: 'woodStairs', name: 'Wooden stairs', cat: 'stairs', kind: 'obj', layer: 'ground', size: [1, 2], stair: { rise: 6 }, build: () => M.woodenStairs(), desc: 'Open plank stairs with a handrail, climbing 6 ft.' },
-  { id: 'spiralStairs', name: 'Spiral stair', cat: 'stairs', kind: 'obj', layer: 'ground', size: [2, 2], stair: { rise: 9, spiral: true, sweep: Math.PI * 1.5 }, build: () => M.spiralStair(), desc: 'Winds three-quarters of a turn round a pillar and leaves on its left, 9 ft up.' },
-  { id: 'ramp', name: 'Earth ramp', cat: 'stairs', kind: 'obj', layer: 'ground', size: [1, 2], stair: { rise: 3 }, build: () => M.earthRamp(), desc: 'A gentle slope climbing 3 ft over two squares.' },
+  { id: 'steps', name: 'Steps', cat: 'stairs', kind: 'obj', layer: 'ground', size: [1, 1], stair: { rise: 2.5 }, build: () => M.stoneStairs(1, 2.5), desc: 'Climbs 2.5 ft in one square. Raise the square behind it one level.' },
+  { id: 'stairs', name: 'Stone stairs', cat: 'stairs', kind: 'obj', layer: 'ground', size: [1, 2], stair: { rise: 5 }, build: () => M.stoneStairs(2, 5), desc: 'Climbs 5 ft over two squares. Raise the square behind it two levels.' },
+  { id: 'stairsLong', name: 'Long stairs', cat: 'stairs', kind: 'obj', layer: 'ground', size: [1, 3], stair: { rise: 7.5 }, build: () => M.stoneStairs(3, 7.5), desc: 'Climbs 7.5 ft over three squares: three levels.' },
+  { id: 'grandStairs', name: 'Grand stairs', cat: 'stairs', kind: 'obj', layer: 'ground', size: [2, 2], stair: { rise: 5 }, build: () => M.grandStairs(), desc: 'Marble stairs with balustrades and a runner, 10 ft wide, climbing 5 ft: two levels.' },
+  { id: 'woodStairs', name: 'Wooden stairs', cat: 'stairs', kind: 'obj', layer: 'ground', size: [1, 2], stair: { rise: 5 }, build: () => M.woodenStairs(), desc: 'Open plank stairs with a handrail, climbing 5 ft: two levels.' },
+  { id: 'spiralStairs', name: 'Spiral stair', cat: 'stairs', kind: 'obj', layer: 'ground', size: [2, 2], stair: { rise: 7.5, spiral: true, sweep: Math.PI * 1.5 }, build: () => M.spiralStair(), desc: 'Winds three-quarters of a turn round a pillar and leaves on its left, 7.5 ft up: three levels.' },
+  { id: 'ramp', name: 'Earth ramp', cat: 'stairs', kind: 'obj', layer: 'ground', size: [1, 2], stair: { rise: 2.5 }, build: () => M.earthRamp(), desc: 'A gentle slope climbing 2.5 ft over two squares: one level.' },
 
   // ---------------- lights ----------------
-  { id: 'torch', name: 'Wall torch', cat: 'light', kind: 'obj', layer: 'wall', size: [1, 1], light: { c: WARM, i: 55, d: 34, p: [0, 7.1, -0.4], f: 1 }, build: () => M.wallTorch(), desc: 'Snaps to the nearest wall side.' },
+  { id: 'torch', name: 'Wall torch', cat: 'light', kind: 'obj', layer: 'wall', size: [1, 1], light: { c: WARM, i: 55, d: 34, p: [0, 7.1, -1.4], f: 1 }, build: () => M.wallTorch(), desc: 'Snaps to the nearest wall side.' },
   { id: 'brazier', name: 'Brazier', cat: 'light', kind: 'obj', layer: 'ground', size: [1, 1], block: true, light: { c: WARM, i: 85, d: 42, p: [0, 3.9, 0], f: 1 }, build: () => M.brazier(), desc: 'A bowl of burning coals.' },
   { id: 'spiritBrazier', name: 'Spirit brazier', cat: 'light', kind: 'obj', layer: 'ground', size: [1, 1], block: true, light: { c: 0x5ab0ff, i: 70, d: 38, p: [0, 3.9, 0], f: 0.7 }, build: () => M.brazier('blue'), desc: 'Cold blue witchfire.' },
   { id: 'candelabra', name: 'Candelabra', cat: 'light', kind: 'obj', layer: 'ground', size: [1, 1], block: true, light: { c: 0xffb060, i: 30, d: 26, p: [0, 5.3, 0], f: 0.5 }, build: () => M.candelabra(), desc: 'A tall brass candle stand.' },
@@ -189,6 +189,30 @@ export const ITEMS = [
   { id: 'plate', name: 'Pressure plate', cat: 'game', kind: 'obj', layer: 'rug', size: [1, 1], trap: { dc: 13, dmg: '2d8', half: false, hidden: true, once: true, what: 'Darts fly from the walls' }, build: () => M.pressurePlate(), desc: 'A hidden dart trap: 2d8, save for none. The red mark shows only once it is noticed.' },
   { id: 'fireRune', name: 'Fire rune', cat: 'game', kind: 'obj', layer: 'rug', size: [1, 1], trap: { dc: 13, dmg: '3d6', half: true, once: true, what: 'The rune bursts into flame' }, light: { c: 0xff7a2a, i: 10, d: 12, p: [0, 0.8, 0], f: 0.4 }, build: () => M.fireRune(), desc: 'A glowing glyph that burns once: 3d6, save for half.' },
 ];
+
+// Pieces are real-sized. These were first drawn for 3 ft squares and are re-sized here to suit a
+// 5 ft square: a bed that fills one square by two, floor pieces that fill their square, and so
+// on. [x, y, z] (or one number) scales the model; a piece's surface height and light follow.
+const FIT = {
+  altar: [1.5, 1.1, 1.4], fountain: [1.5, 1.25, 1.5], tent: [1.6, 1.4, 1.6],
+  bedroll: [1.35, 1.2, 1.5], sarcophagus: [1.4, 1.15, 1.5], hoard: [1.6, 1.4, 1.6], spider: 1.35, dragon: 1.5, ooze: 1.55,
+  spikes: [1.65, 1, 1.65], trapdoor: [1.6, 1, 1.6], plate: [1.65, 1, 1.65], fireRune: [1.7, 1, 1.7], startMark: [1.6, 1, 1.6], exitMark: [1.6, 1.3, 1.6],
+  weaponRack: [1.5, 1, 1], banner: [1.4, 1.15, 1], blueBanner: [1.4, 1.15, 1], shield: [1.3, 1.3, 1],
+  well: 1.3, cage: [1.25, 1.1, 1.25], pillar: [1.4, 1, 1.4], statue: 1.2,
+  chest: 1.25, ornateChest: 1.25, mimic: 1.25, crates: 1.3, barrel: 1.15, anvil: 1.15, cauldron: 1.25, campfire: 1.35,
+  brazier: 1.15, spiritBrazier: 1.15, hay: 1.3, lectern: 1.1, crown: 1.15, sword: 1.15, urn: 1.2,
+  standingStone: 1.2, boulder: 1.3, grave: 1.2, stump: 1.2, logPile: 1.3, crystal: 1.2, amethyst: 1.2,
+  coins: 1.2, gems: 1.2, potions: 1.2, idol: 1.2, bones: 1.25, candles: 1.15, rocks: 1.3, glowShrooms: 1.25, mushrooms: 1.25,
+};
+for (const it of ITEMS) {
+  const f = FIT[it.id];
+  if (!f) continue;
+  const [sx, sy, sz] = Array.isArray(f) ? f : [f, f, f];
+  const build = it.build;
+  it.build = (...a) => { const g = build(...a); g.scale.set(sx, sy, sz); return g; };
+  if (it.surface) it.surface *= sy;
+  if (it.light) it.light = { ...it.light, p: [it.light.p[0] * sx, it.light.p[1] * sy, it.light.p[2] * sz] };
+}
 
 export const byId = Object.fromEntries(ITEMS.map((it) => [it.id, it]));
 export const LAYERS = ['rug', 'ground', 'item', 'wall', 'ceiling'];

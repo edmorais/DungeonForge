@@ -1,4 +1,5 @@
 import { CATEGORIES, ITEMS, byId } from './catalog.js';
+import { CELL, LEVEL } from './config.js';
 import { LANDSCAPES } from './environment.js';
 import { ROOM_THEMES } from './samples.js';
 
@@ -82,20 +83,24 @@ export function buildUI(root, H) {
   const gridBtn = h('button', { class: 'btn icon on', title: 'Show grid (G)', 'aria-label': 'Show grid', onclick: () => H.toggleGrid() }, '#');
   const undoBtn = h('button', { class: 'btn icon', title: 'Undo (Ctrl+Z)', 'aria-label': 'Undo', onclick: () => H.undo() }, '↶');
   const redoBtn = h('button', { class: 'btn icon', title: 'Redo (Ctrl+Shift+Z)', 'aria-label': 'Redo', onclick: () => H.redo() }, '↷');
-  const walkBtn = h('button', { class: 'btn primary', title: 'Explore your dungeon in first person (V)', onclick: () => H.walk() }, 'Walk through');
+  const walkBtn = h('button', { class: 'btn primary play', title: 'Play your dungeon in first person (V)', onclick: () => H.walk() }, h('span', { class: 'g', 'aria-hidden': 'true' }, '▶'), h('span', { class: 'play-label' }, 'Play'));
 
   const menu = h('div', { class: 'menu', role: 'menu' },
+    h('div', { class: 'menu-title' }, 'Map'),
     h('button', { onclick: () => { closeMenu(); H.newDungeon(); } }, 'New dungeon…', h('kbd', {}, 'N')),
     h('button', { onclick: () => { closeMenu(); H.generate(); } }, 'Generate a random keep', h('kbd', {}, '')),
     h('button', { title: 'Adds a start, an exit, a locked door with its key and two traps, placed along the way through your map', onclick: () => { closeMenu(); H.makeGame(); } }, 'Make this map a game', h('kbd', {}, '')),
+    h('button', { onclick: () => { closeMenu(); H.clearMap(); } }, 'Clear everything', h('kbd', {}, '')),
+    h('hr'),
+    h('div', { class: 'menu-title' }, 'Save and share'),
     h('button', { onclick: () => { closeMenu(); H.openFile(); } }, 'Import a map…', h('kbd', {}, 'Ctrl O')),
     h('button', { onclick: () => { closeMenu(); H.saveFile(); } }, 'Export this map…', h('kbd', {}, 'Ctrl S')),
     h('button', { onclick: () => { closeMenu(); H.screenshot(); } }, 'Take a picture', h('kbd', {}, '')),
     h('button', { onclick: () => { closeMenu(); H.battleMap(); } }, 'Export battle map…', h('kbd', {}, '')),
-    h('button', { onclick: () => { closeMenu(); H.topView(); } }, 'Top-down view', h('kbd', {}, 'T')),
     h('hr'),
+    h('div', { class: 'menu-title' }, 'View'),
+    h('button', { onclick: () => { closeMenu(); H.topView(); } }, 'Top-down view', h('kbd', {}, 'T')),
     h('button', { onclick: () => { closeMenu(); H.toggleQuality(); } }, refs.qLabel = h('span', {}, 'Graphics: auto'), h('kbd', {}, '')),
-    h('button', { onclick: () => { closeMenu(); H.clearMap(); } }, 'Clear everything', h('kbd', {}, '')),
     h('hr'),
     h('button', { onclick: () => { closeMenu(); H.help(); } }, 'Controls', h('kbd', {}, '?')));
   const menuBtn = h('button', { class: 'btn icon menu-btn', title: 'Menu', 'aria-label': 'Menu', 'aria-haspopup': 'true', onclick: (e) => { e.stopPropagation(); menu.classList.toggle('open'); } }, '☰');
@@ -103,9 +108,12 @@ export function buildUI(root, H) {
   document.addEventListener('click', (e) => { if (!menu.contains(e.target)) closeMenu(); });
 
   const topbar = h('div', { class: 'topbar' },
-    h('div', { class: 'wordmark' }, 'Dungeon Forge', h('small', {}, '3 ft squares')),
+    h('div', { class: 'wordmark' }, 'Dungeon Forge', h('small', {}, '5 ft squares')),
     nameInput, h('div', { class: 'sep' }), landSel, h('div', { class: 'sep' }), timebox, lightbox,
-    h('div', { class: 'spacer' }), undoBtn, redoBtn, cutBtn, gridBtn, soundBtn, walkBtn, h('div', { class: 'menu-wrap' }, menuBtn, menu));
+    h('div', { class: 'spacer' }),
+    h('div', { class: 'group', role: 'group', 'aria-label': 'Undo and redo' }, undoBtn, redoBtn),
+    h('div', { class: 'group', role: 'group', 'aria-label': 'View' }, cutBtn, gridBtn, soundBtn),
+    walkBtn, h('div', { class: 'menu-wrap' }, menuBtn, menu));
 
   // ---------- palette ----------
   const toolBtns = {};
@@ -113,7 +121,7 @@ export function buildUI(root, H) {
     ['view', 'Move', 'Drag to move the view without building (H or Esc)'],
     ['place', 'Place', 'Place the chosen piece'],
     ['select', 'Select', 'Select a placed piece to move, turn or delete it (M)'],
-    ['height', 'Height', 'Raise or lower squares in 3 ft steps (L)'],
+    ['height', 'Height', 'Raise or lower squares in 2.5 ft steps (L)'],
     ['room', 'Room', 'Drag out a floored, walled room (B)'],
     ['erase', 'Erase', 'Click to remove, drag to clear an area (X)'],
     ['pick', 'Pick', 'Copy a piece from the map (I or Alt+click)'],
@@ -135,28 +143,64 @@ export function buildUI(root, H) {
     decor: 'Rugs sit under furniture. Wall pieces snap to sides.',
     loot: 'Chests open in walk mode. Values add to your treasure tally.',
     nature: 'Trees and stones for outdoor maps. Drag to scatter.',
-    creature: 'In walk mode, creatures notice a hero 18 ft away and fight in turns, with dice.',
+    creature: 'In play, creatures notice a hero 20 ft away and fight in turns, with dice.',
     game: 'These turn a walk into a game: a start, an exit, keys for locked doors (under Doors) and traps.',
-    stairs: 'Stairs climb toward their back; R turns them. Raise the squares they lead to with the Height tool (L), 3 ft per level.',
+    stairs: 'Stairs climb toward their back; R turns them. Raise the squares they lead to with the Height tool (L), 2.5 ft per level.',
   };
 
-  function showCat(id) {
-    state.cat = id;
-    for (const [k, b] of Object.entries(catBtns)) { b.classList.toggle('on', k === id); b.setAttribute('aria-selected', k === id); }
-    itemsBox.innerHTML = '';
-    const c = CATEGORIES.find((x) => x.id === id);
-    itemsBox.append(h('h3', {}, c.name), h('p', { class: 'hint' }, CAT_HINT[id]));
+  // the list of pieces: a search box, the pieces used most recently, then a category or what was found
+  const findIn = h('input', { type: 'search', placeholder: 'Find a piece…', 'aria-label': 'Find a piece', spellcheck: 'false',
+    oninput: () => renderItems(), onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Escape') { findIn.value = ''; renderItems(); findIn.blur(); } } });
+  const findBox = h('div', { class: 'find' }, findIn, h('button', { title: 'Clear', 'aria-label': 'Clear the search', onclick: () => { findIn.value = ''; renderItems(); findIn.focus(); } }, '×'));
+  const recentBox = h('div', { class: 'recent' });
+  const listBox = h('div', {});
+  itemsBox.append(findBox, recentBox, listBox);
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem('dungeon-forge:recent') || '[]').filter((id) => byId[id]).slice(0, 5); } catch { /* none yet */ }
+  const pic = (id) => (state.thumbs[id] ? h('img', { src: state.thumbs[id], alt: '' }) : h('div', { class: 'ph' }));
+  function renderRecent() {
+    recentBox.innerHTML = '';
+    recentBox.hidden = !recent.length;
+    if (!recent.length) return;
+    recentBox.append(h('span', {}, 'Recent'), ...recent.map((id) => h('button', { class: state.selected === id ? 'on' : '', title: byId[id].name, 'aria-label': byId[id].name, 'data-id': id, onclick: () => H.select(id) }, pic(id))));
+  }
+  function noteUsed(id) {
+    recent = [id, ...recent.filter((x) => x !== id)].slice(0, 5);
+    try { localStorage.setItem('dungeon-forge:recent', JSON.stringify(recent)); } catch { /* not kept */ }
+    renderRecent();
+  }
+  function renderItems() {
+    const q = findIn.value.trim().toLowerCase();
+    listBox.innerHTML = '';
+    for (const k of Object.keys(cards)) delete cards[k];
+    let list;
+    if (q) {
+      const words = q.split(/\s+/);
+      list = ITEMS.filter((it) => { const text = `${it.name} ${it.desc} ${CATEGORIES.find((c) => c.id === it.cat).name}`.toLowerCase(); return words.every((w) => text.includes(w)); });
+      listBox.append(h('h3', {}, list.length === 1 ? '1 piece found' : `${list.length} pieces found`));
+      if (!list.length) listBox.append(h('p', { class: 'none' }, 'Nothing matches. Try a shorter word, such as door, chest or stair.'));
+    } else {
+      const c = CATEGORIES.find((x) => x.id === state.cat);
+      list = ITEMS.filter((x) => x.cat === state.cat);
+      listBox.append(h('h3', {}, c.name), h('p', { class: 'hint' }, CAT_HINT[state.cat]));
+    }
     const grid = h('div', { class: 'grid' });
-    for (const it of ITEMS.filter((x) => x.cat === id)) {
-      const img = state.thumbs[it.id] ? h('img', { src: state.thumbs[it.id], alt: '' }) : h('div', { class: 'ph' });
+    for (const it of list) {
       const card = h('button', { class: 'card' + (state.selected === it.id ? ' on' : ''), title: it.desc,
         onclick: () => H.select(it.id), onmouseenter: () => showDesc(it), onmouseleave: () => showDesc(state.selected ? byId[state.selected] : null) },
-      img, h('span', {}, it.name),
-      it.stair ? h('i', { class: 'gp wide' }, `↑${it.stair.rise} ft`) : it.span > 1 ? h('i', { class: 'gp wide' }, `${it.span * 3} ft`) : it.gp ? h('i', { class: 'gp' }, it.gp >= 1000 ? `${it.gp / 1000}k` : `${it.gp}`) : null);
+      pic(it.id), h('span', {}, it.name),
+      it.stair ? h('i', { class: 'gp wide' }, `↑${it.stair.rise} ft`) : it.span > 1 ? h('i', { class: 'gp wide' }, `${it.span * CELL} ft`) : it.gp ? h('i', { class: 'gp' }, it.gp >= 1000 ? `${it.gp / 1000}k` : `${it.gp}`) : null);
       cards[it.id] = card;
       grid.append(card);
     }
-    itemsBox.append(grid);
+    listBox.append(grid);
+  }
+  function showCat(id) {
+    state.cat = id;
+    findIn.value = '';
+    for (const [k, b] of Object.entries(catBtns)) { b.classList.toggle('on', k === id); b.setAttribute('aria-selected', k === id); }
+    renderItems();
+    renderRecent();
   }
 
   function showDesc(it) {
@@ -169,7 +213,7 @@ export function buildUI(root, H) {
         erase: ['Erase', 'Click a piece to remove the topmost thing in that square, or a wall line. Drag to clear an area.'],
         pick: ['Pick', 'Click something on the map to select the same piece.'],
         select: ['Select', 'Click a placed piece to select it. Drag to move it, R turns it, Delete removes it.'],
-        height: ['Height', 'Click a square or drag across several. Squares go up to 30 ft high or 30 ft down, in 3 ft steps. Shift-click does the opposite.'],
+        height: ['Height', 'Click a square or drag across several. Squares go up to 30 ft high or 30 ft down, in 2.5 ft steps. Shift-click does the opposite.'],
       }[state.tool] || ['', ''];
       desc.append(h('b', {}, tips[0]), tips[1]);
       if (state.tool === 'height') {
@@ -178,9 +222,9 @@ export function buildUI(root, H) {
           ...[['raise', 'Raise'], ['lower', 'Lower'], ['set', 'Set to']].map(([id, label]) =>
             h('button', { class: id === mode ? 'on' : '', 'aria-pressed': String(id === mode), onclick: () => { H.setHeightMode(id); showDesc(null); } }, label)));
         const lv = H.heightLevel();
-        const fmt = (l) => (l > 0 ? `${l * 3} ft up` : l < 0 ? `${-l * 3} ft down` : 'Ground');
+        const fmt = (l) => (l > 0 ? `${l * LEVEL} ft up` : l < 0 ? `${-l * LEVEL} ft down` : 'Ground');
         const levelSel = h('select', { class: 'styled', id: 'height-level', disabled: mode !== 'set' ? 'disabled' : null, onchange: (e) => H.setHeightLevel(+e.target.value) },
-          Array.from({ length: 21 }, (_, k) => 10 - k).map((l) => h('option', { value: String(l), selected: l === lv ? 'selected' : null }, fmt(l))));
+          Array.from({ length: 25 }, (_, k) => 12 - k).map((l) => h('option', { value: String(l), selected: l === lv ? 'selected' : null }, fmt(l))));
         desc.append(h('div', { class: 'height-row' }, seg, levelSel));
       }
       if (state.tool === 'room') {
@@ -224,6 +268,7 @@ export function buildUI(root, H) {
   const minimap = h('canvas', { class: 'minimap', width: '220', height: '220', 'aria-hidden': 'true' });
   // the game: who the hero is, whose turn it is, the dice, and a short log
   const heroLine = h('div', { class: 'heroline' }, '');
+  const torchIcon = h('div', { class: 'torch-icon on', title: 'Your torch (F)', html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c2 3 4 4.500 4 7.500a4 4 0 01-8 0C8 7.500 10.500 6 12 2z"/><path d="M10 14h4l-1 8h-2z"/></svg>' });
   const banner = h('div', { class: 'banner', hidden: true });
   const turnbar = h('div', { class: 'turnbar', hidden: true });
   const dice = h('div', { class: 'dice', 'aria-live': 'polite' });
@@ -260,7 +305,7 @@ export function buildUI(root, H) {
   // main.js moves them over the 3D view every frame
   const overlay = h('div', { class: 'overlay' });
   const bars = [];
-  const walkhud = h('div', { class: 'walkhud' }, hurt, overlay, cross, prompt, purse, hpBar, heroLine, walkName, minimap, banner, dice, gamelog, turnbar, touch,
+  const walkhud = h('div', { class: 'walkhud' }, hurt, overlay, cross, prompt, purse, hpBar, heroLine, torchIcon, walkName, minimap, banner, dice, gamelog, turnbar, touch,
     h('div', { class: 'walkhelp' }, 'WASD move · mouse look · Shift run · Space jump · E or click to act · R special · F torch · Esc to return'));
 
   // ---------- choose a hero ----------
@@ -269,7 +314,7 @@ export function buildUI(root, H) {
     const close = () => classBg.classList.remove('open');
     const card = (id, c) => h('button', { class: 'start hero' + (id === last ? ' on' : ''), onclick: () => { close(); onPick(id); } },
       h('div', {}, h('b', {}, c.name), h('span', {}, c.blurb),
-        h('span', { class: 'hero-stats' }, `${c.hp} health · AC ${c.ac} · moves ${c.speed * 3} ft`),
+        h('span', { class: 'hero-stats' }, `${c.hp} health · AC ${c.ac} · moves ${c.speed * CELL} ft`),
         h('span', { class: 'hero-stats' }, `${c.attack.name}: +${c.attack.bonus} to hit, ${c.attack.dmg}`),
         h('span', {}, `${c.special.name} (${c.special.uses}): ${c.special.text}`)));
     classBg.innerHTML = '';
@@ -331,7 +376,7 @@ export function buildUI(root, H) {
     h('h1', {}, 'Dungeon Forge'),
     h('p', { class: 'lede' }, 'Lay out a dungeon square by square. Every square is 3 feet. Set the land around it and the hour of the day, then walk the halls yourself.'),
     h('div', { class: 'starts' },
-      startCard(ICONS.open, 'Empty site', 'A blank 192 × 144 ft grid of 3 ft squares. Pick a landscape around it: wilderness, a dark void or a gaming table.', () => H.start('blank')),
+      startCard(ICONS.open, 'Empty site', 'A blank 320 × 240 ft grid of 5 ft squares. Pick a landscape around it: wilderness, a dark void or a gaming table.', () => H.start('blank')),
       startCard(ICONS.keep, 'Random keep', 'A new keep every time, with rooms, doors, furniture, loot and monsters laid out for you.', () => H.start('random'))),
     h('div', { class: 'samples-title' }, 'Or start from a finished map'),
     h('div', { class: 'starts samples' },
@@ -360,7 +405,7 @@ export function buildUI(root, H) {
       row('Move the view (no building)', 'H or Esc'), row('Select, move, turn, delete a placed piece', 'M, then click it'), row('Copy the selected piece', 'Ctrl+D'), row('Copy a piece', 'I, or Alt+click'), row('Deselect', 'Esc'), row('Undo / redo', 'Ctrl+Z / Ctrl+Shift+Z'), row('Cut walls down', 'C'),
       row('Height tool (Shift-click does the opposite)', 'L'), row('Grid', 'G'), row('Top-down view', 'T'), row('Overall light', '- and ='), row('Time of day', '[ and ] move an hour; P plays'),
       h('h3', {}, 'Walking'),
-      row('Enter walk mode', 'V'), row('Move / run', 'WASD / Shift'), row('Jump (clears a trap, gains one 3 ft level)', 'Space'), row('Open doors, loot chests, attack', 'E or click'),
+      row('Play', 'V'), row('Move / run', 'WASD / Shift'), row('Jump (clears a trap, gains one 2.5 ft level)', 'Space'), row('Open doors, loot chests, attack', 'E or click'),
       row('Your class’s special action', 'R'), row('End your turn in a fight', 'Enter or T'), row('Torch', 'F'), row('Peaceful (creatures do not attack)', 'P'), row('Back to the editor', 'Esc'),
       row('Gamepad', 'Sticks move and look; A jump, X act, Y special, B end turn'), row('Touch', 'Stick moves, drag the view to look, buttons act')),
     h('div', { class: 'foot' }, h('span', {}, 'Your map saves itself in this browser as you work.'), h('button', { class: 'btn', onclick: () => helpBg.classList.remove('open') }, 'Close'))));
@@ -395,12 +440,12 @@ export function buildUI(root, H) {
         h('li', {}, 'With Move selected, drag to look around. Two fingers turn and zoom.'),
         h('li', {}, 'Choose a piece in the palette below, then tap the map to place it.'),
         h('li', {}, 'Tap Move again before dragging the view, so nothing is placed by accident.'),
-        h('li', {}, 'Tap Walk through to explore what you built.'))
+        h('li', {}, 'Tap Play to explore what you built.'))
       : h('ol', {},
         h('li', {}, 'With Move selected, drag to slide the view. Right-drag turns it, scroll zooms.'),
         h('li', {}, 'Choose a piece in the palette, then click the map to place it or drag to paint.'),
         h('li', {}, 'Press Esc to go back to Move.'),
-        h('li', {}, 'Press V to walk through what you built.'))),
+        h('li', {}, 'Press Play (or V) to walk through what you built.'))),
     h('button', { class: 'btn primary', onclick: () => { coach.hidden = true; try { localStorage.setItem('dungeon-forge:coached', '1'); } catch { /* ignore */ } } }, 'Got it'));
 
   const loading = h('div', { class: 'loading' }, h('div', {}, 'Dungeon Forge', h('small', {}, 'Carving stone…')));
@@ -415,10 +460,14 @@ export function buildUI(root, H) {
       state.thumbs[id] = url;
       const c = cards[id];
       if (c && c.firstChild && c.firstChild.tagName !== 'IMG') c.firstChild.replaceWith(h('img', { src: url, alt: '' }));
+      const r = recentBox.querySelector(`[data-id="${id}"]`);
+      if (r && r.firstChild.tagName !== 'IMG') r.firstChild.replaceWith(h('img', { src: url, alt: '' }));
     },
     setSelected(id) {
       state.selected = id;
-      if (id && byId[id].cat !== state.cat) showCat(byId[id].cat);
+      // show the piece's own category, unless it is already on screen in a search
+      if (id && byId[id].cat !== state.cat && !cards[id]) showCat(byId[id].cat);
+      if (id) noteUsed(id); else renderRecent();
       for (const [k, c] of Object.entries(cards)) c.classList.toggle('on', k === id);
       showDesc(id ? byId[id] : null);
     },
@@ -447,7 +496,7 @@ export function buildUI(root, H) {
     setQuality(q) { refs.qLabel.textContent = 'Graphics: ' + q; },
     setHover(info) {
       where.classList.toggle('bad', !!info?.problem);
-      where.textContent = !info ? '—' : info.problem ? info.problem : `Square ${info.i}, ${info.j} (${info.i * 3}, ${info.j * 3} ft)${info.text ? ' · ' + info.text : ''}`;
+      where.textContent = !info ? '—' : info.problem ? info.problem : `Square ${info.i}, ${info.j} (${info.i * CELL}, ${info.j * CELL} ft)${info.text ? ' · ' + info.text : ''}`;
     },
     setTip(t) { tip.textContent = t; },
     setStats(s) {
@@ -486,7 +535,7 @@ export function buildUI(root, H) {
         h('div', { class: 'order' }, c.order.map((o) => h('i', { class: o.current ? 'on' : '' }, o.name))));
       turnbar.innerHTML = '';
       if (mine) {
-        turnbar.append(h('span', { class: c.moveLeft ? '' : 'spent' }, `Move ${c.moveLeft * 3} ft`), h('span', { class: c.action ? '' : 'spent' }, c.action ? 'Action ready' : 'Action used'),
+        turnbar.append(h('span', { class: c.moveLeft ? '' : 'spent' }, `Move ${c.moveLeft * CELL} ft`), h('span', { class: c.action ? '' : 'spent' }, c.action ? 'Action ready' : 'Action used'),
           g.special ? h('span', { class: g.special.uses ? '' : 'spent' }, h('kbd', {}, 'R'), `${g.special.name} (${g.special.uses})`) : null,
           h('span', {}, h('kbd', {}, 'Enter'), 'End turn'));
       } else turnbar.append(h('span', { class: 'spent' }, 'Wait for your turn'));
@@ -515,6 +564,7 @@ export function buildUI(root, H) {
       while (gamelog.children.length > 5) gamelog.firstChild.remove();
     },
     clearGame() { gamelog.innerHTML = ''; dice.classList.remove('on'); hurt.classList.remove('on'); clearTimeout(rollTimer); clearInterval(rollSpin); },
+    setTorch(on) { torchIcon.classList.toggle('on', on); },
     addFloat(text, kind) {
       const el = h('div', { class: 'float ' + kind }, text);
       overlay.append(el);
@@ -542,8 +592,8 @@ export function buildUI(root, H) {
     askResume,
     // a walk waits to be resumed (text describes it), or none does (null)
     setPaused(text) {
-      walkBtn.textContent = text ? 'Resume walk' : 'Walk through';
-      walkBtn.title = text ? `A walk is paused: ${text}. Changing the map resets it. (V)` : 'Explore your dungeon in first person (V)';
+      walkBtn.querySelector('.play-label').textContent = text ? 'Resume' : 'Play';
+      walkBtn.title = text ? `A game is paused: ${text}. Changing the map resets it. (V)` : 'Play your dungeon in first person (V)';
     },
     minimap,
     setHealth(hp, max, peaceful, wasHit = false) {

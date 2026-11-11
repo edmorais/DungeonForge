@@ -4,8 +4,10 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import './style.css';
-import { WALL_H, CELL, worldToCell, GRID_W, GRID_D } from './config.js';
+import { WALL_H, CELL, worldToCell, GRID_W, GRID_D } from './config.js'; // CELL: 5 ft squares
 import { byId } from './catalog.js';
 import { DungeonState } from './state.js';
 import { World } from './world.js';
@@ -24,7 +26,7 @@ import { isDesktop, saveWithDialog } from './desktop.js';
 import { sunkenCrypt, banditCamp, ruinedShrine, randomKeep, ziggurat, deepMine, sunkenArena, lichSpires, cragTower } from './samples.js';
 
 const SAVE_KEY = 'dungeon-forge:autosave:v1';
-const CUTS = [{ h: WALL_H + 1, label: 'full' }, { h: 6, label: '6 ft' }, { h: 2.6, label: '3 ft' }];
+const CUTS = [{ h: WALL_H + 1, label: 'full' }, { h: 5, label: '5 ft' }, { h: 2.6, label: '2.5 ft' }];
 
 // ---------- renderer ----------
 const canvas = document.getElementById('view');
@@ -52,6 +54,32 @@ composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.45, 1.05);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
+// Graphics: high only (see applyScale). Ambient occlusion darkens the corners where walls, floors
+// and furniture meet, which is most of what makes a painted model read as solid; it draws the
+// scene a second time, so auto and low never use it. The grade adds a little contrast and
+// colour and darkens the edges of the picture.
+const ao = new GTAOPass(scene, camera, window.innerWidth, window.innerHeight);
+ao.blendIntensity = 0.9;
+ao.updateGtaoMaterial({ radius: 1.6, distanceExponent: 1.4, thickness: 1.2, scale: 1.1, samples: 12 });
+ao.enabled = false;
+composer.insertPass(ao, 1);
+const grade = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uAmount: { value: 1 } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uAmount; varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      vec3 col = c.rgb;
+      col = mix(col, col * col * (3.0 - 2.0 * col), 0.35 * uAmount); // a gentle S-curve
+      float l = dot(col, vec3(0.299, 0.587, 0.114));
+      col = mix(vec3(l), col, 1.0 + 0.14 * uAmount);                 // a little more colour
+      vec2 d = vUv - 0.5;
+      col *= 1.0 - dot(d, d) * 0.55 * uAmount;                       // darker towards the corners
+      gl_FragColor = vec4(col, c.a);
+    }`,
+});
+grade.enabled = false;
+composer.addPass(grade);
 
 // ---------- systems ----------
 const state = new DungeonState();
@@ -176,6 +204,7 @@ const walker = new Walker({
   onPrompt: (t, kind, sub) => ui.setPrompt(t, kind, sub),
   onToast: (m, k) => ui.toast(m, k),
   onExit: (run) => exitWalk(run),
+  onTorch: (on) => ui.setTorch(on),
   onSound: (kind, arg) => audio[kind]?.(arg),
 });
 const audio = new Ambience();
@@ -192,7 +221,7 @@ function refreshStats() {
 let lastPlaceSound = 0;
 state.onChange(() => {
   // the paused walk was played on the map as it was; a changed map starts a new one
-  if (paused) dropPaused('The map changed, so the paused walk was reset.');
+  if (paused) dropPaused('The map changed, so the paused game was reset.');
   if (performance.now() - lastPlaceSound > 90) { lastPlaceSound = performance.now(); audio.place(); }
   pool.invalidate();
   editor.updateSelBox();
@@ -219,7 +248,7 @@ function dropPaused(msg = '') {
 function warnPaused() {
   if (!paused || pauseWarned) return;
   pauseWarned = true;
-  ui.toast('A walk is paused. Changing the map will reset it.', 'danger');
+  ui.toast('A game is paused. Changing the map will reset it.', 'danger');
 }
 
 function selectItem(id) {
@@ -247,7 +276,7 @@ function setTool(t) {
     select: 'Click a placed piece · drag to move · R turns · Delete removes',
     place: 'Choose a piece from the palette',
     view: 'Drag to move the view · right-drag turns · scroll zooms · choose a piece to build',
-    height: 'Click or drag squares to raise them 3 ft · Shift does the opposite · up to 30 ft either way',
+    height: 'Click or drag squares to raise them 2.5 ft · Shift does the opposite · up to 30 ft either way',
   }[t]);
 }
 
@@ -297,7 +326,7 @@ Object.assign(H, {
   clearMap: () => { state.checkpoint(); state.clearAll(); state.emit(); ui.toast('Map cleared. Ctrl+Z brings it back.'); },
   toggleQuality: () => {
     setQualityMode({ auto: 'high', high: 'low', low: 'auto' }[qualityMode]);
-    ui.toast({ auto: 'Graphics: auto. Sharpness follows the frame rate.', high: 'Graphics: high, at full sharpness.', low: 'Graphics: low. Fewer lights and shadows.' }[qualityMode]);
+    ui.toast({ auto: 'Graphics: auto. Sharpness follows the frame rate.', high: 'Graphics: high. Full sharpness, with shaded corners and richer colour.', low: 'Graphics: low. Fewer lights and shadows.' }[qualityMode]);
   },
   help: () => ui.showHelp(),
   start: (kind) => { startedAt = performance.now(); auto.reset(); startDungeon(kind); ui.showCoach(); },
@@ -353,9 +382,12 @@ function startDungeon(kind) {
 }
 
 function frameCamera(view = null) {
+  // the sample views were framed for 3 ft squares: stretch them sideways with the grid, and up with the levels
+  const k = CELL / 3, ky = 0.9;
+  if (view) view = [[view[0][0] * k, view[0][1] * k * ky, view[0][2] * k], [view[1][0] * k, view[1][1] * ky, view[1][2] * k]];
   const target = new THREE.Vector3(...(view ? view[1] : [0, 0, 0]));
   editor.controls.target.copy(target);
-  camera.position.set(...(view ? view[0] : [-38, 105, 128]));
+  camera.position.set(...(view ? view[0] : [-60, 160, 200]));
   camera.lookAt(target);
   editor.controls.update();
 }
@@ -368,6 +400,7 @@ function applyScale() {
   const s = qualityMode === 'auto' ? auto.scale : 1;
   renderer.setPixelRatio(Math.max(Math.min(0.6, full), full * s));
   bloom.enabled = quality === 'high' && s > 0.65;
+  ao.enabled = grade.enabled = qualityMode === 'high';
   onResize();
 }
 function setQuality(q) {
@@ -449,14 +482,14 @@ function enterWalk(classId = null, run = null) {
     paused = null;
     ui.setPaused(null);
     walker.resume(run);
-    ui.toast('The walk goes on. Esc pauses it again.');
+    ui.toast('The game goes on. Esc pauses it again.');
     return;
   }
   dropPaused();
   ui.clearGame();
   walker.enter(classId);
   const hasExit = state.data.objects.some((o) => byId[o.t].exit);
-  ui.toast(classId ? (hasExit ? 'Find the exit. Esc pauses the walk.' : 'This map has no exit piece. Esc pauses the walk.') : 'Click to look around. Press Esc to return to the editor.');
+  ui.toast(classId ? (hasExit ? 'Find the exit. Esc pauses the game.' : 'This map has no exit piece. Esc pauses the game.') : 'Click to look around. Press Esc to return to the editor.');
 }
 // `run` is a walk that is still going (see Walker.exit): keep it so it can be resumed
 function exitWalk(run = null) {
@@ -466,7 +499,7 @@ function exitWalk(run = null) {
   pauseWarned = false;
   clearOverlays();
   ui.setPaused(run ? game.summary() : null);
-  if (run) ui.toast('Walk paused. Walk through resumes it. Changing the map resets it.');
+  if (run) ui.toast('Game paused. Press Resume to carry on. Changing the map resets it.');
   world.setWalkMode(false);
   if (cutIndex !== 0) world.setCut(CUTS[cutIndex].h);
   env.setWorkLight(0.8);
@@ -589,7 +622,7 @@ function screenshot() {
   });
 }
 
-// ---------- battle map export (top-down, fixed pixels per 3 ft square) ----------
+// ---------- battle map export (top-down, fixed pixels per 5 ft square) ----------
 function mapBounds() {
   const d = state.data;
   let i0 = Infinity, j0 = Infinity, i1 = -Infinity, j1 = -Infinity;
@@ -662,7 +695,7 @@ function battleMap(withGrid = true, px = mapPx, daylight = mapDaylight) {
   if (!r) { ui.toast('Build something first; the battle map covers what you have placed.'); return; }
   ui.openIO({
     title: 'Battle map',
-    text: `${r.cols} × ${r.rows} squares at ${r.px} pixels per 3 ft square (${r.W} × ${r.H} px), seen from straight above ${daylight ? 'at midday' : 'at the current time of day'}. Set your virtual tabletop's grid to ${r.px} px.`,
+    text: `${r.cols} × ${r.rows} squares at ${r.px} pixels per 5 ft square (${r.W} × ${r.H} px), seen from straight above ${daylight ? 'at midday' : 'at the current time of day'}. Set your virtual tabletop's grid to ${r.px} px.`,
     img: r.url,
     actions: [
       ...[50, 70, 100].filter((n) => n !== r.px).map((n) => ({ label: `${n} px squares`, fn: () => battleMap(withGrid, n, daylight) })),
@@ -741,7 +774,7 @@ function drawMinimap() {
   const c = ui.minimap;
   const g = c.getContext('2d');
   const W = c.width, R = W / 2;
-  const scale = 4; // px per foot
+  const scale = 2.6; // px per foot
   const px = camera.position.x, pz = camera.position.z;
   g.clearRect(0, 0, W, W);
   g.save();
@@ -832,7 +865,7 @@ function applyViewOffset() {
   // keep the scene centred in the space right of the palette while editing
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  const pal = mode === 'edit' && w > 760 ? 330 : 0;
+  const pal = mode === 'edit' && w > 760 ? 364 : 0;
   if (pal) camera.setViewOffset(w, h, -pal / 2, 0, w, h);
   else camera.clearViewOffset();
 }

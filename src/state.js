@@ -1,4 +1,4 @@
-import { GRID_W, GRID_D, KEEP_W, KEEP_D, KEEP_I0, KEEP_J0, CELL, MAX_LEVEL, inGrid, cellX, cellZ, lineX, lineZ } from './config.js';
+import { GRID_W, GRID_D, KEEP_W, KEEP_D, KEEP_I0, KEEP_J0, CELL, LEVEL, MAX_LEVEL, inGrid, cellX, cellZ, lineX, lineZ } from './config.js';
 import { byId } from './catalog.js';
 
 export const edgeKey = (o, i, j) => `${o}:${i}:${j}`;
@@ -100,9 +100,9 @@ export class DungeonState {
   }
   floorAt(i, j) { return this.data.floors[`${i},${j}`] || null; }
 
-  // ---------- heights: whole levels of 3 ft, from -10 (30 ft down) to +10 (30 ft up) ----------
+  // ---------- heights: whole levels of 2.5 ft, from -12 (30 ft down) to +12 (30 ft up) ----------
   levelAt(i, j) { return this.data.heights[`${i},${j}`] || 0; }
-  topAt(i, j) { return this.levelAt(i, j) * CELL; }
+  topAt(i, j) { return this.levelAt(i, j) * LEVEL; }
   setLevel(i, j, level) {
     if (!inGrid(i, j)) return false;
     const k = `${i},${j}`;

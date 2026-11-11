@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mat } from './materials.js';
 
 // Box with UVs scaled to world size (s = feet per texture repeat)
-export function boxGeo(w, h, d, s = 3) {
+export function boxGeo(w, h, d, s = 5) {
   const g = new THREE.BoxGeometry(w, h, d);
   const uv = g.attributes.uv;
   // face order px nx py ny pz nz, 4 verts each
@@ -27,7 +27,7 @@ export function add(parent, geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0)
   return mesh;
 }
 
-export const BX = (w, h, d, s = 3) => boxGeo(w, h, d, s);
+export const BX = (w, h, d, s = 5) => boxGeo(w, h, d, s);
 export const CY = (rt, rb, h, seg = 12) => new THREE.CylinderGeometry(rt, rb, h, seg);
 export const SP = (r, ws = 12, hs = 8) => new THREE.SphereGeometry(r, ws, hs);
 export const CO = (r, h, seg = 10) => new THREE.ConeGeometry(r, h, seg);
@@ -55,7 +55,7 @@ export function ICO(r, detail = 0, jitter = 0.25, seed = 1) {
 }
 
 // Extruded wall panel from a 2D shape (x along wall, y up), centered on z, UVs scaled
-export function extrudeWall(shape, depth, s = 3) {
+export function extrudeWall(shape, depth, s = 5) {
   const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 10 });
   g.translate(0, 0, -depth / 2);
   const uv = g.attributes.uv;

@@ -8,7 +8,7 @@ import { CLASSES, MONSTERS, FALLBACK_MONSTER, POTION, MIMIC_BITE, d20, rollDice,
 // walk-mode state (creature places, doors, traps); it never changes the saved map.
 // `out` is how it talks to the interface: toast, roll, log, hud, health, purse, sound, end.
 
-const NOTICE = 6; // squares at which a creature notices the hero
+const NOTICE = 4; // squares (20 ft) at which a creature notices the hero
 // how tall each creature stands (ft), for aiming effects and labels at it
 const TALL = { goblin: 3.2, skeleton: 5.6, cultist: 5.6, orc: 5.9, wraith: 6.2, ooze: 2.8, spider: 2.8, ogre: 9, dragon: 9 };
 const BOLT = { cultist: 0x6aff8a, spider: 0xb8e04a, ogre: 0x8a8478 }; // what creatures throw
@@ -196,7 +196,7 @@ export class Game {
     for (const m of this.mons.values()) {
       if (m.dead || m.active || out.includes(m)) continue;
       const [x, z] = this.centre(m);
-      if (list.some((f) => { const [fx, fz] = this.centre(f); return Math.hypot(fx - x, fz - z) <= 4 * CELL && !this.world.segmentBlocked(fx, fz, x, z, true); })) out.push(m);
+      if (list.some((f) => { const [fx, fz] = this.centre(f); return Math.hypot(fx - x, fz - z) <= 3 * CELL && !this.world.segmentBlocked(fx, fz, x, z, true); })) out.push(m);
     }
     return out;
   }
@@ -245,7 +245,7 @@ export class Game {
       if (c.idx >= c.order.length) {
         c.idx = 0; c.round++; this.stats.rounds++;
         // out of sight and far away from every foe at the end of a round: the hero got away
-        if (this.foes().every((m) => this.distTo(m) > 10 && !this.sees(m))) return this.endCombat('fled');
+        if (this.foes().every((m) => this.distTo(m) > 7 && !this.sees(m))) return this.endCombat('fled');
       }
       const e = c.order[c.idx];
       if (e.hero) return this.heroTurn();
@@ -309,7 +309,7 @@ export class Game {
     if (!steps.length) return then();
     [m.i, m.j] = steps[steps.length - 1];
     this.world.moveCreature(m.id, { i: m.i, j: m.j }, steps.map(([i, j]) => [lineX(i) + (m.w * CELL) / 2, this.world.floorTop(i, j), lineZ(j) + (m.d * CELL) / 2]));
-    this.after((steps.length * CELL) / 13 + 0.2, then);
+    this.after((steps.length * CELL) / 16 + 0.2, then);
   }
 
   // may a creature of this size step from (i, j) one square in a direction?
@@ -506,7 +506,7 @@ export class Game {
     } else if (sp.id === 'missile') {
       if (!m) { this.out.toast('Aim at a creature first.'); return; }
       if (!this.canAct()) return;
-      if (!this.inRange(m, 20)) { this.out.toast(`You have no clear shot at the ${m.name}.`); return; }
+      if (!this.inRange(m, 12)) { this.out.toast(`You have no clear shot at the ${m.name}.`); return; }
       this.engage(m);
       this.spendAction();
       const d = rollDice(sp.dmg);

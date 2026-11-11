@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CELL, WALL_H, FLOOR_Y, GRID_W, GRID_D, cellX, cellZ, lineX, lineZ, hash2, inGrid, worldToCell } from './config.js';
+import { CELL, LEVEL, WALL_H, FLOOR_Y, GRID_W, GRID_D, cellX, cellZ, lineX, lineZ, hash2, inGrid, worldToCell } from './config.js';
 import { G, add, BX } from './geom.js';
 import { updateMask } from './heightmask.js';
 import { byId, POSTS, POST_RANK, framePost } from './catalog.js';
@@ -17,11 +17,11 @@ const _v = new THREE.Vector3();
 const _s = new THREE.Vector3(1, 1, 1);
 const UP = new THREE.Vector3(0, 1, 0);
 
-// one 3 ft block of foundation masonry or earth, bottom at y = 0
+// one block of foundation masonry or earth, a square wide and a level high, bottom at y = 0
 const COLUMN_MAT = { earth: 'earthBank', rock: 'pitRock', stone: 'foundation' };
 const buildColumn = (m) => () => {
   const g = G();
-  add(g, BX(CELL, CELL, CELL, 3), m, 0, CELL / 2, 0);
+  add(g, BX(CELL, LEVEL, CELL), m, 0, LEVEL / 2, 0);
   return g;
 };
 
@@ -156,14 +156,14 @@ export class World {
         for (const [a, c] of [[i - 1, j], [i + 1, j], [i, j - 1], [i, j + 1]]) B = Math.min(B, this.groundTop(a, c));
         const f = d.floors[`${i},${j}`];
         // bare raised or sunken ground still needs a top surface of its own
-        if (!f && T !== 0 && B >= T) B = T - CELL;
+        if (!f && T !== 0 && B >= T) B = T - LEVEL;
         if (B >= T) continue;
         const earth = !f || EARTHY.has(f);
         // plain ground at level 0 sits just under the landscape so the grass still shows on top
         const yOff = !f && T === 0 ? -0.08 : 0;
-        for (let y = B; y < T - 0.01; y += CELL) {
+        for (let y = B; y < T - 0.01; y += LEVEL) {
           // earth gives way to bedrock more than one block below the surface
-          const kind = earth ? (y < -CELL - 0.01 ? 'rock' : 'earth') : 'stone';
+          const kind = earth ? (y < -2 * LEVEL - 0.01 ? 'rock' : 'earth') : 'stone';
           push('col:' + kind, buildColumn(COLUMN_MAT[kind]), mtx(cellX(i), y + yOff, cellZ(j), 0), 'floor', 0.82 + hash2(i * 7 + y, j, 41) * 0.22);
         }
       }
@@ -222,7 +222,7 @@ export class World {
         const T = it.capT || 0.62;
         if (it.cap === 'full') caps.push(mtx(x, cut, z, ry, CELL * span, 0.08, T));
         else {
-          const jamb = it.jamb || 0.4;
+          const jamb = it.jamb || 0.8;
           const dx = (span * CELL) / 2 - jamb / 2;
           const ox = o === 'h' ? dx : 0, oz = o === 'h' ? 0 : dx;
           caps.push(mtx(x - ox, cut, z - oz, ry, jamb + 0.02, 0.08, T + 0.18));
@@ -257,7 +257,7 @@ export class World {
       const z = lineZ(ob.j) + (dd * CELL) / 2;
       const [, hiLevel] = this.state.footprintLevels(ob.t, ob.i, ob.j, ob.r);
       const fl = this.state.floorAt(ob.i, ob.j);
-      let y = hiLevel * CELL + (fl && !byId[fl].liquid && !byId[fl].pit ? FLOOR_Y : 0);
+      let y = hiLevel * LEVEL + (fl && !byId[fl].liquid && !byId[fl].pit ? FLOOR_Y : 0);
       if (it.layer === 'item') y += surfaces.get(`${ob.i},${ob.j}`) || 0;
       if (it.layer === 'rug') y += 0.005;
       const ry = ob.r * (Math.PI / 2);
@@ -618,7 +618,7 @@ export class World {
       const lx = dx * Math.cos(ry) - dz * Math.sin(ry);
       const lz = dx * Math.sin(ry) + dz * Math.cos(ry);
       const [lo] = this.state.footprintLevels(ob.t, ob.i, ob.j, ob.r);
-      const base = lo * CELL + FLOOR_Y;
+      const base = lo * LEVEL + FLOOR_Y;
       let t;
       if (st.spiral) {
         let a = Math.atan2(lx, lz);
@@ -684,7 +684,7 @@ export class World {
       const c = dobj.creature;
       if (c && c.path) {
         // walking to another square (walk mode): a steady pace along the points it was given
-        const gp = dobj.group.position, to = c.path[0], step = dt * 13;
+        const gp = dobj.group.position, to = c.path[0], step = dt * 16;
         if (gp.distanceTo(to) <= step) { gp.copy(to); c.path.shift(); if (!c.path.length) { c.path = null; this.lightsMoved = true; } } else gp.addScaledVector(_v.subVectors(to, gp).normalize(), step);
         for (const L of this.lights) if (L.id === id) L.pos.copy(L.home).add(gp).sub(c.home);
         moving = true;

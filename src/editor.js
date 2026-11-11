@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CELL, MAX_LEVEL, GRID_W, GRID_D, FLOOR_Y, WALL_H, cellX, cellZ, lineX, lineZ, worldToCell, inGrid } from './config.js';
+import { CELL, LEVEL, MAX_LEVEL, GRID_W, GRID_D, FLOOR_Y, WALL_H, cellX, cellZ, lineX, lineZ, worldToCell, inGrid } from './config.js';
 import { byId } from './catalog.js';
 import { footprint, edgeKey, edgeCenter } from './state.js';
 import { furnishRoom } from './samples.js';
@@ -46,7 +46,7 @@ export class Editor {
     this.controls.dampingFactor = 0.09;
     this.controls.maxPolarAngle = 1.42;
     this.controls.minDistance = 12;
-    this.controls.maxDistance = 420;
+    this.controls.maxDistance = 700;
     this.controls.screenSpacePanning = false;
     this.controls.zoomToCursor = true;
     this.controls.target.set(0, 0, 0);
@@ -209,7 +209,7 @@ export class Editor {
   marchToGround(ray) {
     let lo = 0, hi = 0;
     for (const v of Object.values(this.state.data.heights)) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
-    const yTop = hi * CELL + FLOOR_Y + 0.01, yBot = lo * CELL + FLOOR_Y - 0.01;
+    const yTop = hi * LEVEL + FLOOR_Y + 0.01, yBot = lo * LEVEL + FLOOR_Y - 0.01;
     const o = ray.origin, d = ray.direction;
     if (d.y >= -1e-4) return null;
     let t = o.y > yTop ? (yTop - o.y) / d.y : 0;
@@ -539,7 +539,7 @@ export class Editor {
     if (n) this.state.emit();
     else {
       this.state.undoStack.pop();
-      if (span > 1 && edges.length) this.onToast(`${it.name} needs ${span * 3} ft of wall line inside the build area.`);
+      if (span > 1 && edges.length) this.onToast(`${it.name} needs ${span * CELL} ft of wall line inside the build area.`);
     }
   }
 
@@ -557,14 +557,14 @@ export class Editor {
     }
     if (!n) {
       this.state.undoStack.pop();
-      if (capped) this.onToast(`Squares go no higher than ${MAX_LEVEL * CELL} ft or deeper than ${MAX_LEVEL * CELL} ft.`);
+      if (capped) this.onToast(`Squares go no higher than ${MAX_LEVEL * LEVEL} ft or deeper than ${MAX_LEVEL * LEVEL} ft.`);
       return;
     }
     this.state.emit();
     const sq = n === 1 ? '1 square' : `${n} squares`;
-    const ft = (l) => (l > 0 ? `${l * CELL} ft up` : l < 0 ? `${-l * CELL} ft down` : 'ground level');
+    const ft = (l) => (l > 0 ? `${l * LEVEL} ft up` : l < 0 ? `${-l * LEVEL} ft down` : 'ground level');
     if (mode === 'set') this.onToast(`Set ${sq} to ${ft(this.heightLevel)}.`);
-    else this.onToast(`${mode === 'raise' ? 'Raised' : 'Lowered'} ${sq} by 3 ft${n === 1 ? ` (now ${ft(this.state.levelAt(i0, j0))})` : ''}.`);
+    else this.onToast(`${mode === 'raise' ? 'Raised' : 'Lowered'} ${sq} by 2.5 ft${n === 1 ? ` (now ${ft(this.state.levelAt(i0, j0))})` : ''}.`);
   }
 
   neighbourFrame(e, span = 1) {
@@ -673,7 +673,7 @@ export class Editor {
     if (!inGrid(i, j)) return { text: 'Outside the build area', i, j };
     const parts = [];
     const lv = this.state.levelAt(i, j);
-    if (lv) parts.push(lv > 0 ? `${lv * CELL} ft up` : `${-lv * CELL} ft down`);
+    if (lv) parts.push(lv > 0 ? `${lv * LEVEL} ft up` : `${-lv * LEVEL} ft down`);
     const f = this.state.floorAt(i, j);
     if (f) parts.push(byId[f].name);
     for (const o of this.state.objectsAt(i, j)) parts.push(byId[o.t].name);
