@@ -9,6 +9,9 @@ import { CLASSES, MONSTERS, FALLBACK_MONSTER, POTION, MIMIC_BITE, d20, rollDice,
 // `out` is how it talks to the interface: toast, roll, log, hud, health, purse, sound, end.
 
 const NOTICE = 6; // squares at which a creature notices the hero
+// how tall each creature stands (ft), for aiming effects and labels at it
+const TALL = { goblin: 3.2, skeleton: 5.6, cultist: 5.6, orc: 5.9, wraith: 6.2, ooze: 2.8, spider: 2.8, ogre: 9, dragon: 9 };
+const BOLT = { cultist: 0x6aff8a, spider: 0xb8e04a, ogre: 0x8a8478 }; // what creatures throw
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -69,7 +72,19 @@ export class Game {
     this.pushHud();
   }
 
-  stop() { this.active = false; this.combat = null; this.queue = []; }
+  stop() { this.active = false; this.combat = null; this.queue = []; this.world.showReach([]); }
+
+  // a paused walk carries on: the game kept its state, the interface needs it again
+  resumed() {
+    this.out.health(this.hero.hp, this.hero.max, this.peaceful);
+    this.out.purse(this.gold, this.xp, this.keys);
+    this.readyAt = performance.now() + 400;
+    this.pushHud();
+  }
+  // one line for the editor while the walk is paused
+  summary() {
+    return this.cls ? `${this.cls.name}, ${this.hero.hp} of ${this.hero.max} health, ${this.gold.toLocaleString()} gp` : 'Looking around';
+  }
 
   // ---------- small helpers ----------
   after(seconds, fn) { this.queue.push({ t: seconds, fn }); }
@@ -87,8 +102,44 @@ export class Game {
     return !this.world.segmentBlocked(cellX(clamp(hi, i, i + m.w - 1)), cellZ(clamp(hj, j, j + m.d - 1)), cellX(hi), cellZ(hj), false);
   }
   describe(m) { return `AC ${m.st.ac} · ${m.hp} of ${m.st.hp} hp`; }
+  // a point on a creature, from its feet (0) to the top of its head (1)
+  pointOf(m, up = 0.7) {
+    const p = this.world.creatureXZ(m.id);
+    const [x, z] = p ? [p.x, p.z] : this.centre(m);
+    return [x, (p ? p.y : 0) + (TALL[m.t] || 4) * up, z];
+  }
+  // a point on the hero, a little below the eyes
+  heroPoint(drop = 0.9) { const c = this.walker.camera.position; return [c.x, c.y - drop, c.z]; }
+  // a point above the middle of a piece on the map
+  spot(ob, up = 1) { const [w, d] = footprint(ob.t, ob.r); return [lineX(ob.i) + (w * CELL) / 2, this.world.floorTop(ob.i, ob.j) + up, lineZ(ob.j) + (d * CELL) / 2]; }
+
+  // The squares the hero can still reach this turn: a step costs one square, walls and closed
+  // doors stop it, and a jump gains one level at most. Empty when it is not the hero's move.
+  reach() {
+    if (!this.combat || this.turn !== 'hero' || this.moveLeft <= 0 || this.over || this.dying) return [];
+    const [hi, hj] = this.heroCell();
+    if (!inGrid(hi, hj)) return [];
+    const seen = new Set([hj * GRID_W + hi]);
+    const out = [];
+    let ring = [[hi, hj]];
+    for (let step = 0; step < this.moveLeft && ring.length; step++) {
+      const next = [];
+      for (const [i, j] of ring) for (const [di, dj] of DIRS) {
+        const ni = i + di, nj = j + dj, k = nj * GRID_W + ni;
+        if (!inGrid(ni, nj) || seen.has(k) || this.blocked[k] || this.world.creatureInCell(ni, nj)) continue;
+        if (this.world.edgeBlocks(di ? 'v' : 'h', di > 0 ? ni : i, dj > 0 ? nj : j)) continue;
+        if (this.state.levelAt(ni, nj) - this.state.levelAt(i, j) > 1 && !this.stairs[k] && !this.stairs[j * GRID_W + i]) continue;
+        seen.add(k);
+        next.push([ni, nj]);
+        out.push([ni, nj]);
+      }
+      ring = next;
+    }
+    return out;
+  }
 
   pushHud() {
+    this.world.showReach(this.reach());
     const c = this.combat;
     this.out.hud({
       cls: this.cls ? this.cls.name : null,
@@ -312,6 +363,8 @@ export class Game {
     let dmg = 0;
     const lines = [];
     if (r.hit) { const d = rollDice(atk.dmg, r.crit); dmg = d.total; lines.push(`${d.text} damage`); }
+    this.world.creatureAttack(m.id);
+    if (atk.range) this.out.fx('bolt', { from: this.pointOf(m, 0.8), to: this.heroPoint(), hue: BOLT[m.t] || 0xffffff, size: m.t === 'ogre' ? 0.5 : 0.26, speed: 50 });
     this.out.roll({ title: `The ${m.name} attacks`, die: r.nat, sub: `${r.nat} ${signed(r.bonus)} = ${r.total} vs your AC ${r.ac}`, outcome: r.crit ? 'Critical hit' : r.hit ? 'Hit' : 'Miss', tone: r.hit ? 'bad' : 'good', lines });
     this.log(r.hit ? `The ${m.name} ${atk.verb} for ${dmg}.` : `The ${m.name} misses you.`, r.hit ? 'bad' : '');
     if (dmg) this.hurt(dmg, `the ${m.name}`); else this.out.sound('miss');
@@ -324,6 +377,8 @@ export class Game {
     const d = rollDice(b.dmg);
     const dmg = r.ok ? Math.floor(d.total / 2) : d.total;
     this.out.roll({ title: `The ${m.name} breathes fire`, die: r.nat, sub: `Your save: ${r.nat} ${signed(r.bonus)} = ${r.total} vs DC ${r.dc}`, outcome: r.ok ? 'Saved: half damage' : 'Failed', tone: 'bad', lines: [`${d.text}${r.ok ? ', halved' : ''}: ${dmg} damage`] });
+    this.world.creatureAttack(m.id);
+    this.out.fx('breath', { from: this.pointOf(m, 0.85), to: this.heroPoint() });
     this.log(`The ${m.name} ${b.verb} for ${dmg}.`, 'bad');
     this.out.sound('growl', true);
     this.hurt(dmg, `the ${m.name}'s fire`);
@@ -351,6 +406,8 @@ export class Game {
     this.hero.hp = Math.min(this.hero.max, this.hero.hp + d.total);
     this.out.health(this.hero.hp, this.hero.max, this.peaceful);
     this.out.roll({ title: label, die: null, sub: d.text, outcome: `+${this.hero.hp - before} health`, tone: 'good', lines: [] });
+    this.out.sound('heal');
+    this.out.fx('heal', {});
     this.log(`${label}: +${this.hero.hp - before} health.`, 'good');
   }
 
@@ -409,7 +466,8 @@ export class Game {
     const dice = r.rolls.length > 1 ? `${r.rolls.join(' and ')}: ${r.nat}` : `${r.nat}`;
     this.out.roll({ title: `You ${atk.verb} the ${m.name}`, die: r.nat, sub: `${dice} ${signed(r.bonus)} = ${r.total} vs AC ${r.ac}`, outcome: r.crit ? 'Critical hit' : r.hit ? 'Hit' : 'Miss', tone: r.hit ? 'good' : 'bad', lines: lines.length === 2 ? [`${lines[0]} damage`] : lines });
     this.walker.swing = 0.25;
-    this.out.sound(r.hit ? 'hit' : 'miss');
+    if (atk.range > 1) { this.out.fx('bolt', { from: this.heroPoint(0.5), to: this.pointOf(m), hue: 0xff7a2a }); this.out.sound('cast'); } else this.out.sound(r.hit ? 'hit' : 'miss');
+    this.out.fx(r.hit ? 'hit' : 'miss', { at: this.pointOf(m, 1.08), burst: this.pointOf(m), text: String(total), crit: r.crit });
     this.log(r.hit ? `You hit the ${m.name} for ${total}.` : `You miss the ${m.name}.`, r.hit ? 'good' : '');
     if (r.hit) this.damage(m, total);
     this.afterAction();
@@ -422,6 +480,8 @@ export class Game {
     this.stats.dealt += n;
     if (!res.defeated) return;
     m.dead = true;
+    this.out.fx('death', { at: this.pointOf(m, 0.5) });
+    this.out.sound('death');
     this.stats.defeated++;
     const xp = byId[m.t].xp || 0;
     this.xp += xp;
@@ -451,7 +511,10 @@ export class Game {
       this.spendAction();
       const d = rollDice(sp.dmg);
       this.out.roll({ title: `Magic missile strikes the ${m.name}`, die: null, sub: 'Three darts that never miss', outcome: `${d.total} damage`, tone: 'good', lines: [d.text] });
-      this.out.sound('hit');
+      this.walker.swing = 0.25;
+      this.out.sound('cast');
+      this.out.fx('missiles', { from: this.heroPoint(0.5), to: this.pointOf(m) });
+      this.out.fx('hit', { at: this.pointOf(m, 1.08), burst: this.pointOf(m), text: String(d.total), crit: false });
       this.log(`Magic missile hits the ${m.name} for ${d.total}.`, 'good');
       this.damage(m, d.total);
     }
@@ -500,6 +563,7 @@ export class Game {
         this.stats.chests++;
         this.out.purse(this.gold, this.xp, this.keys);
         this.out.sound('coins');
+        this.out.fx('gold', { at: this.spot(t.ref, 1.6) });
         this.out.toast(`You found ${(it.gp || 0).toLocaleString()} gp.`, 'gold');
       }
     }
@@ -512,7 +576,8 @@ export class Game {
     this.world.consume(ob.id);
     this.keys++;
     this.out.purse(this.gold, this.xp, this.keys);
-    this.out.sound('coins');
+    this.out.sound('key');
+    this.out.fx('gold', { at: this.spot(ob, 1.2) });
     this.out.toast('You pick up a key.', 'gold');
     this.pushHud();
   }
@@ -535,8 +600,10 @@ export class Game {
       this.out.roll({ title: 'You work at the lock', die: r.nat, sub: `${r.nat} ${signed(r.bonus)} = ${r.total} vs DC ${r.dc}`, outcome: r.ok ? 'The lock opens' : 'The lock holds', tone: r.ok ? 'good' : 'bad', lines: [] });
       if (r.ok) { this.world.unlocked.add(k); this.stats.doors++; return true; }
       this.out.toast('The lock holds. You need a key.');
+      this.out.sound('locked');
       return false;
     }
+    this.out.sound('locked');
     this.out.toast(this.cls.lockpick !== null ? 'You could not pick this lock. You need a key.' : 'Locked. You need a key.');
     return false;
   }
@@ -552,6 +619,8 @@ export class Game {
     const tr = byId[ob.t].trap;
     this.world.springTrap(ob.id);
     this.stats.trapsSprung++;
+    this.out.sound('trap');
+    this.out.fx('trap', { t: ob.t, at: this.spot(ob, 0.2) });
     const r = saveRoll(this.cls.save, tr.dc);
     const d = rollDice(tr.dmg);
     const dmg = r.ok ? (tr.half ? Math.floor(d.total / 2) : 0) : d.total;
@@ -625,6 +694,8 @@ export class Game {
   finish(result, cause = '') {
     if (this.over) return;
     this.over = true;
+    this.world.showReach([]);
+    this.out.sound(result === 'escaped' ? 'win' : 'lose');
     this.out.end({
       result, cause, cls: this.cls ? this.cls.name : '', classId: this.classId, name: this.state.data.name,
       seconds: Math.round((performance.now() - this.t0) / 1000),

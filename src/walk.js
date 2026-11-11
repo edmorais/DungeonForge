@@ -24,13 +24,8 @@ function distPointSeg(px, pz, ax, az, bx, bz) {
 export class Walker {
   constructor({ camera, dom, state, world, env, game, onPrompt, onToast, onExit, onSound }) {
     Object.assign(this, { camera, dom, state, world, env, game, onPrompt, onToast, onExit, onSound: onSound || (() => {}) });
-    this.gear = heldGear();
-    this.gear.visible = false;
-    camera.add(this.gear);
-    this.gearTorch = this.gear.getObjectByName('torch');
-    this.gearSword = this.gear.getObjectByName('sword');
-    this.swordRest = this.gearSword.rotation.clone();
     this.active = false;
+    this.setGear(null);
     this.yaw = 0;
     this.pitch = 0;
     this.pos = new THREE.Vector3();
@@ -114,6 +109,22 @@ export class Walker {
     this.onToast(this.handOn ? 'Torch lit.' : 'Torch doused.');
   }
 
+  // what the walker holds: a torch, and the weapon of the hero's class (none when just looking)
+  setGear(kind) {
+    if (this.gear) {
+      this.camera.remove(this.gear);
+      this.gear.traverse((o) => { if (o.isMesh) o.material.dispose(); });
+    }
+    this.gear = heldGear(kind);
+    this.gear.visible = this.active;
+    this.camera.add(this.gear);
+    this.gearTorch = this.gear.getObjectByName('torch');
+    this.gearSword = this.gear.getObjectByName('sword');
+    this.swordRest = this.gearSword.rotation.clone();
+    this.swordPos = this.gearSword.position.clone();
+    this.gearCasts = !!this.gearSword.userData.cast;
+  }
+
   requestLock() {
     try {
       const p = this.dom.requestPointerLock?.();
@@ -148,17 +159,12 @@ export class Walker {
     return { x: 0, z: lineZ(GRID_D) + 6, yaw: 0 };
   }
 
-  // classId: one of the hero classes, or null to just look around
-  enter(classId = null) {
+  // what entering and resuming share: the camera, the pointer and a walker standing still
+  wake() {
     this.voidEdges = this.env.styleId === 'void' && Object.keys(this.state.data.floors).length > 0;
     this.active = true;
     this.lockedOnce = false;
     this.touching = false;
-    this.world.resetRuntime();
-    const sp = this.spawnPoint();
-    this.pos.set(sp.x, 0, sp.z);
-    this.yaw = sp.yaw ?? 0;
-    this.pitch = 0;
     this.keys.clear();
     this.stick.x = this.stick.y = 0;
     this.gear.visible = true;
@@ -166,19 +172,46 @@ export class Walker {
     this.camera.near = 0.15;
     this.camera.updateProjectionMatrix();
     this.requestLock();
-    this.y = this.floorHeight(this.pos.x, this.pos.z);
     this.vy = 0;
     this.onGround = true;
     this.wantJump = false;
     this.shake = 0;
+  }
+
+  // classId: one of the hero classes, or null to just look around
+  enter(classId = null) {
+    this.setGear(classId);
+    this.wake();
+    this.world.resetRuntime();
+    const sp = this.spawnPoint();
+    this.pos.set(sp.x, 0, sp.z);
+    this.yaw = sp.yaw ?? 0;
+    this.pitch = 0;
+    this.y = this.floorHeight(this.pos.x, this.pos.z);
     [this.ci, this.cj] = worldToCell(this.pos.x, this.pos.z);
     this.game.start(classId, this);
   }
 
+  // carry on a walk that exit() handed back
+  resume(run) {
+    this.wake();
+    this.world.restoreRuntime(run.world);
+    this.pos.copy(run.pos);
+    this.yaw = run.yaw;
+    this.pitch = run.pitch;
+    this.y = this.floorHeight(this.pos.x, this.pos.z);
+    [this.ci, this.cj] = worldToCell(this.pos.x, this.pos.z);
+    this.game.resumed();
+  }
+
+  // Leave walk mode. A walk that is still going is handed to onExit, so it can be resumed;
+  // the map shows as built again meanwhile.
   exit() {
     if (!this.active) return;
     this.active = false;
-    this.game.stop();
+    const g = this.game;
+    const run = g.active && !g.over && !g.dying ? { world: this.world.saveRuntime(), pos: this.pos.clone(), yaw: this.yaw, pitch: this.pitch } : null;
+    if (!run) g.stop();
     this.world.lookAt = null;
     this.keys.clear();
     this.handLight.intensity = 0;
@@ -186,7 +219,7 @@ export class Walker {
     if (document.pointerLockElement === this.dom) document.exitPointerLock();
     this.onPrompt(null);
     this.world.resetRuntime();
-    this.onExit();
+    this.onExit(run);
   }
 
   cellSolid(i, j) {
@@ -365,7 +398,11 @@ export class Walker {
       mv.normalize().multiplyScalar(speed * dt);
       this.tryMove(this.pos.x + mv.x, this.pos.z, mv.x, 0);
       this.tryMove(this.pos.x, this.pos.z + mv.z, 0, mv.z);
-      if (this.onGround) this.bob += dt * speed * 0.9;
+      if (this.onGround) {
+        this.bob += dt * speed * 0.9;
+        this.stride = (this.stride || 0) + dt * speed;
+        if (this.stride > 5.2) { this.stride = 0; this.onSound('step', inWater); }
+      }
     }
     const [bx, bz] = this.env.walkBounds();
     this.pos.x = clamp(this.pos.x, -bx, bx);
@@ -426,7 +463,14 @@ export class Walker {
     if (this.swing > 0) this.swing -= dt;
     const s = Math.max(0, this.swing || 0) / 0.25;
     const arc = Math.sin(s * Math.PI);
-    this.gearSword.rotation.set(this.swordRest.x - arc * 1.3, this.swordRest.y - arc * 0.4, this.swordRest.z + arc * 0.9);
+    if (this.gearCasts) {
+      // a staff is thrust forward and up as the spell leaves it
+      this.gearSword.rotation.set(this.swordRest.x - arc * 0.75, this.swordRest.y, this.swordRest.z + arc * 0.2);
+      this.gearSword.position.set(this.swordPos.x - arc * 0.1, this.swordPos.y + arc * 0.14, this.swordPos.z - arc * 0.4);
+    } else {
+      this.gearSword.rotation.set(this.swordRest.x - arc * 1.3, this.swordRest.y - arc * 0.4, this.swordRest.z + arc * 0.9);
+      this.gearSword.position.set(this.swordPos.x - arc * 0.25, this.swordPos.y, this.swordPos.z - arc * 0.2);
+    }
     this.gearTorch.children.forEach((c) => { if (c.userData.flame) { const k = 1 + Math.sin(t * 13) * 0.1; c.scale.set(1, k, 1); } });
   }
 }

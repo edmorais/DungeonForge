@@ -814,7 +814,7 @@ export function tent() {
   return g;
 }
 
-function skullAt(g, x, y, z, s = 1) {
+export function skullAt(g, x, y, z, s = 1) {
   const k = G();
   add(k, SP(0.22, 10, 8), 'bone', 0, 0.2, 0);
   add(k, BX(0.24, 0.16, 0.2), 'bone', 0, 0.06, 0.08);
@@ -894,7 +894,7 @@ export function fireRune() {
 // A key to pick up in walk mode.
 export function keyItem() {
   const root = G();
-  const g = dyn(G(), { pickup: true });
+  const g = dyn(G(), { pickup: true, hover: true }); // in walk mode it turns slowly above the floor
   add(g, TO(0.2, 0.05, 6, 14), 'gold', -0.35, 0.06, 0, PI / 2, 0, 0);
   add(g, BX(0.75, 0.07, 0.07), 'gold', 0.2, 0.06, 0);
   add(g, BX(0.07, 0.07, 0.2), 'gold', 0.52, 0.06, 0.1);
@@ -921,10 +921,14 @@ export function exitMark() {
   add(g, CY(1.25, 1.25, 0.05, 28), 'darkStone', 0, 0.025, 0);
   add(g, TO(1.05, 0.07, 5, 28), 'paleStone', 0, 0.09, 0, PI / 2, 0, 0);
   add(g, CY(0.95, 0.95, 0.02, 28), 'runeGlow', 0, 0.065, 0).userData.noShadow = true;
+  // the glowing stones turn slowly round the disc
+  const ring = dyn(G(), { portal: true });
   for (let k = 0; k < 6; k++) {
     const a = (k / 6) * PI * 2 + 0.3, h = 0.5 + (k % 2) * 0.3;
-    add(g, BX(0.14, h, 0.14), 'runeGlow', Math.cos(a) * 1.05, 0.12 + h / 2, Math.sin(a) * 1.05, 0, a, 0).userData.noShadow = true;
+    add(ring, BX(0.14, h, 0.14), 'runeGlow', Math.cos(a) * 1.05, 0.12 + h / 2, Math.sin(a) * 1.05, 0, a, 0);
   }
+  for (let k = 0; k < 3; k++) add(ring, SP(0.08, 6, 4), 'runeGlow', Math.cos(k * 2.1) * 0.5, 1.2 + k * 0.7, Math.sin(k * 2.1) * 0.5);
+  g.add(noShadow(ring));
   return g;
 }
 
@@ -1044,8 +1048,48 @@ export function potions() {
   return root;
 }
 
-// first-person hands: torch on the left, sword on the right
-export function heldGear() {
+// What each hero holds in the right hand, built along +y from the grip (about 1 unit long).
+// The pieces are drawn in the order they are added, without a depth test (see heldGear), so
+// each weapon is listed from the part farthest from the eye to the nearest.
+function heldWeapon(kind) {
+  const w = G();
+  if (kind === 'wizard') {
+    // a staff with a claw of three prongs round a burning stone
+    add(w, CY(0.028, 0.036, 1.9, 6), 'darkWood', 0, 0.45, 0);
+    for (let k = 0; k < 3; k++) add(w, CO(0.022, 0.22, 4), 'brass', Math.cos(k * 2.1) * 0.07, 1.5, Math.sin(k * 2.1) * 0.07, Math.sin(k * 2.1) * 0.3, 0, -Math.cos(k * 2.1) * 0.3);
+    add(w, SP(0.075, 10, 8), 'flame', 0, 1.5, 0).name = 'glow';
+    add(w, TO(0.04, 0.012, 4, 10), 'brass', 0, 1.36, 0, PI / 2, 0, 0);
+    w.userData.rest = [0.6, -0.95, -1.3, -0.3, 0.1, -0.16];
+    w.userData.cast = true;
+  } else if (kind === 'cleric') {
+    // a flanged mace
+    add(w, CY(0.026, 0.03, 0.95, 6), 'darkWood', 0, 0.42, 0);
+    for (let k = 0; k < 6; k++) add(w, BX(0.035, 0.26, 0.16), 'steel', 0, 0.98, 0, 0, (k * PI) / 3, 0);
+    add(w, SP(0.07, 8, 6), 'steel', 0, 0.98, 0);
+    add(w, CO(0.045, 0.12, 6), 'steel', 0, 1.17, 0);
+    add(w, TO(0.035, 0.012, 4, 10), 'brass', 0, 0.8, 0, PI / 2, 0, 0);
+    add(w, CY(0.032, 0.032, 0.26, 6), 'leather', 0, 0.02, 0);
+    add(w, SP(0.042, 6, 4), 'brass', 0, -0.13, 0);
+  } else {
+    // a sword: the rogue's is short with a curved guard, the fighter's long with a straight one
+    const rogue = kind === 'rogue';
+    const len = rogue ? 0.72 : 1.15, wide = rogue ? 0.05 : 0.07;
+    add(w, BX(wide, len, 0.014), 'steel', 0, len / 2 + 0.1, 0);
+    add(w, CO(wide * 0.72, wide * 1.7, 4), 'steel', 0, len + 0.1 + wide * 0.85, 0).scale.z = 0.14;
+    add(w, BX(wide * 0.28, len * 0.8, 0.018), 'iron', 0, len * 0.42 + 0.1, 0); // the fuller
+    if (rogue) add(w, TO(0.11, 0.016, 4, 10, PI), 'brass', 0, 0.16, 0, 0, 0, PI);
+    else {
+      add(w, BX(0.4, 0.045, 0.055), 'brass', 0, 0.07, 0);
+      for (const s of [-1, 1]) add(w, SP(0.035, 6, 4), 'brass', s * 0.2, 0.07, 0);
+    }
+    add(w, CY(0.027, 0.024, 0.24, 6), 'leather', 0, -0.07, 0);
+    add(w, SP(0.04, 6, 4), 'brass', 0, -0.2, 0);
+  }
+  return w;
+}
+
+// first-person hands: torch on the left; on the right the hero's weapon (none when just looking)
+export function heldGear(kind = 'fighter') {
   const g = G();
   const torch = G();
   add(torch, CY(0.035, 0.03, 0.9, 6), 'darkWood', 0, 0, 0);
@@ -1057,15 +1101,13 @@ export function heldGear() {
   torch.position.set(-0.62, -0.5, -1.35);
   torch.rotation.set(0.3, 0, 0.22);
   torch.name = 'torch';
-  const sword = G();
-  add(sword, BX(0.06, 1.1, 0.015), 'steel', 0, 0.62, 0);
-  add(sword, BX(0.32, 0.04, 0.05), 'brass', 0, 0.06, 0);
-  add(sword, CY(0.025, 0.025, 0.2, 6), 'leather', 0, -0.06, 0);
-  add(sword, SP(0.035, 6, 4), 'brass', 0, -0.17, 0);
+  const sword = heldWeapon(kind);
+  const rest = sword.userData.rest || [0.64, -0.6, -1.35, -0.75, 0.15, -0.45];
   sword.scale.setScalar(0.6);
-  sword.position.set(0.64, -0.6, -1.35);
-  sword.rotation.set(-0.75, 0.15, -0.45);
+  sword.position.set(rest[0], rest[1], rest[2]);
+  sword.rotation.set(rest[3], rest[4], rest[5]);
   sword.name = 'sword';
+  sword.visible = !!kind;
   g.add(torch, sword);
   // drawn last and on top, so the hands never clip into walls
   g.traverse((o) => {
@@ -1374,157 +1416,8 @@ function limb(parent, m, x, y, z, len, r = 0.12, rx = 0, rz = 0) {
   return l;
 }
 
-export function skeletonWarrior() {
-  const [g, b] = creature();
-  limb(b, 'bone', -0.25, 2.7, 0, 2.6, 0.07, 0, 0.05);
-  limb(b, 'bone', 0.25, 2.7, 0, 2.6, 0.07, 0, -0.05);
-  add(b, BX(0.7, 0.2, 0.35), 'bone', 0, 2.75, 0);
-  add(b, CY(0.06, 0.06, 1.6, 5), 'bone', 0, 3.6, -0.1);
-  for (let k = 0; k < 4; k++) add(b, TO(0.32 - k * 0.03, 0.035, 4, 12, PI * 1.4), 'bone', 0, 3.3 + k * 0.28, 0.02, PI / 2, 0, PI * 0.8);
-  add(b, BX(1.0, 0.12, 0.3), 'bone', 0, 4.4, 0);
-  limb(b, 'bone', -0.55, 4.4, 0, 2.0, 0.06, -0.4, 0.15);
-  limb(b, 'bone', 0.55, 4.4, 0, 2.0, 0.06, -0.6, -0.1);
-  add(b, SP(0.36, 10, 8), 'bone', 0, 4.95, 0);
-  add(b, BX(0.4, 0.22, 0.3), 'bone', 0, 4.7, 0.12);
-  add(b, SP(0.08, 6, 4), 'eyeRed', -0.13, 5.0, 0.3);
-  add(b, SP(0.08, 6, 4), 'eyeRed', 0.13, 5.0, 0.3);
-  const sw = G();
-  add(sw, BX(0.12, 2.4, 0.04), 'iron', 0, 1.2, 0);
-  add(sw, BX(0.6, 0.1, 0.1), 'blackIron', 0, 0, 0);
-  sw.position.set(0.75, 2.9, 1.1); sw.rotation.x = 1.1;
-  b.add(sw);
-  const sh = add(b, CY(0.75, 0.75, 0.1, 12), 'darkWood', -0.75, 3.4, 0.65, PI / 2, 0, 0.2);
-  void sh;
-  add(b, SP(0.15, 8, 6), 'blackIron', -0.77, 3.4, 0.72);
-  return g;
-}
-
-export function goblin() {
-  const [g, b] = creature();
-  limb(b, 'goblinSkin', -0.2, 1.4, 0, 1.4, 0.11);
-  limb(b, 'goblinSkin', 0.2, 1.4, 0, 1.4, 0.11);
-  add(b, CY(0.42, 0.5, 1.2, 8), 'leather', 0, 1.9, 0);
-  add(b, SP(0.42, 10, 8), 'goblinSkin', 0, 2.85, 0.05);
-  add(b, CO(0.12, 0.45, 5), 'goblinSkin', 0, 2.8, 0.5, PI / 2, 0, 0);
-  add(b, CO(0.13, 0.8, 4), 'goblinSkin', -0.55, 3.0, 0, 0, 0, PI / 2 + 0.3);
-  add(b, CO(0.13, 0.8, 4), 'goblinSkin', 0.55, 3.0, 0, 0, 0, -PI / 2 - 0.3);
-  add(b, SP(0.07, 6, 4), 'eyeGreen', -0.15, 2.95, 0.38);
-  add(b, SP(0.07, 6, 4), 'eyeGreen', 0.15, 2.95, 0.38);
-  limb(b, 'goblinSkin', -0.5, 2.4, 0, 1.0, 0.08, -0.5, 0.3);
-  const arm = limb(b, 'goblinSkin', 0.5, 2.4, 0, 1.0, 0.08, -1.0, -0.2);
-  add(arm, BX(0.08, 0.9, 0.03), 'steel', 0, -1.4, 0);
-  return g;
-}
-
-export function orc() {
-  const [g, b] = creature();
-  limb(b, 'leather', -0.35, 2.6, 0, 2.6, 0.2);
-  limb(b, 'leather', 0.35, 2.6, 0, 2.6, 0.2);
-  add(b, CY(0.75, 0.6, 2.0, 10), 'orcSkin', 0, 3.6, 0);
-  add(b, BX(1.6, 0.9, 1.1), 'blackIron', 0, 4.2, 0);
-  add(b, SP(0.5, 10, 8), 'orcSkin', 0, 5.2, 0.1);
-  add(b, BX(0.7, 0.3, 0.45), 'orcSkin', 0, 4.95, 0.35);
-  add(b, CO(0.06, 0.3, 4), 'horn', -0.2, 5.15, 0.55);
-  add(b, CO(0.06, 0.3, 4), 'horn', 0.2, 5.15, 0.55);
-  add(b, SP(0.07, 6, 4), 'eyeRed', -0.17, 5.35, 0.52);
-  add(b, SP(0.07, 6, 4), 'eyeRed', 0.17, 5.35, 0.52);
-  limb(b, 'orcSkin', -0.95, 4.5, 0, 2.0, 0.18, -0.2, 0.2);
-  const arm = limb(b, 'orcSkin', 0.95, 4.5, 0, 2.0, 0.18, -0.9, -0.2);
-  const axe = G();
-  add(axe, CY(0.07, 0.07, 3.4, 6), 'darkWood', 0, 0, 0);
-  add(axe, BX(1.0, 1.0, 0.08), 'steel', 0.45, 1.3, 0);
-  axe.position.set(0, -2.1, 0.3); axe.rotation.x = 1.2;
-  arm.add(axe);
-  return g;
-}
-
-export function cultist() {
-  const [g, b] = creature();
-  add(b, LA([[0, 0], [0.95, 0], [0.75, 1.5], [0.5, 3.6], [0.35, 4.2], [0, 4.3]], 12), 'purpleCloth', 0, 0, 0);
-  add(b, CO(0.55, 1.1, 10), 'purpleCloth', 0, 4.6, -0.05);
-  add(b, SP(0.3, 8, 6), 'pitBlack', 0, 4.35, 0.15);
-  add(b, SP(0.06, 6, 4), 'eyeGreen', -0.1, 4.4, 0.42);
-  add(b, SP(0.06, 6, 4), 'eyeGreen', 0.1, 4.4, 0.42);
-  const arm = limb(b, 'purpleCloth', 0.55, 3.7, 0.1, 1.4, 0.16, -0.7, -0.2);
-  void arm;
-  add(b, CY(0.06, 0.06, 5.4, 6), 'darkWood', 0.85, 2.7, 0.75);
-  add(b, SP(0.2, 8, 6), 'eyeGreen', 0.85, 5.5, 0.75);
-  const f = flame(0.6, 'green');
-  f.position.set(0.85, 5.6, 0.75);
-  b.add(f);
-  return g;
-}
-
-export function wraith() {
-  const [g, b] = creature();
-  b.userData.float = true;
-  const robe = LA([[0.0, 0.3], [0.9, 0.0], [0.7, 1.2], [0.55, 3.0], [0.45, 4.0], [0, 4.4]], 12);
-  add(b, robe, 'wraith', 0, 0.8, 0);
-  add(b, CO(0.5, 1.0, 10), 'wraith', 0, 5.4, -0.05);
-  add(b, SP(0.06, 6, 4), 'eyeBlue', -0.12, 5.15, 0.32);
-  add(b, SP(0.06, 6, 4), 'eyeBlue', 0.12, 5.15, 0.32);
-  limb(b, 'wraith', -0.55, 4.4, 0.2, 1.8, 0.12, -1.2, 0.4);
-  limb(b, 'wraith', 0.55, 4.4, 0.2, 1.8, 0.12, -1.2, -0.4);
-  noShadow(b);
-  return g;
-}
-
-export function oozeCube() {
-  const [g, b] = creature();
-  b.userData.wobble = true;
-  const cube = add(b, BX(2.8, 2.8, 2.8), 'ooze', 0, 1.4, 0);
-  cube.userData.noShadow = true;
-  skullAt(b, 0.2, 1.0, 0.1, 1.2);
-  add(b, CY(0.05, 0.05, 1.2, 5), 'bone', -0.5, 0.6, -0.4, 0.4, 0, 1.2);
-  add(b, BX(0.5, 0.06, 0.06), 'steel', 0.6, 1.8, -0.3, 0, 0.5, 0.7);
-  add(b, CY(0.12, 0.12, 0.03, 8), 'gold', -0.6, 1.3, 0.5, 0.6, 0, 0.3);
-  return g;
-}
-
-export function giantSpider() {
-  const [g, b] = creature();
-  add(b, SP(1.3, 12, 10), 'spiderBody', 0, 1.8, -1.0).scale.set(1, 0.85, 1.2);
-  add(b, SP(0.75, 10, 8), 'spiderBody', 0, 1.6, 0.6);
-  for (let k = 0; k < 6; k++) add(b, SP(0.08, 6, 4), 'eyeRed', -0.25 + (k % 3) * 0.25, 1.85 + Math.floor(k / 3) * 0.18, 1.3);
-  add(b, CO(0.08, 0.4, 4), 'horn', -0.18, 1.3, 1.3, 1.2, 0, 0);
-  add(b, CO(0.08, 0.4, 4), 'horn', 0.18, 1.3, 1.3, 1.2, 0, 0);
-  for (const side of [-1, 1]) for (let k = 0; k < 4; k++) {
-    const leg = G();
-    const a = -0.9 + k * 0.6;
-    const upper = G();
-    add(upper, CY(0.09, 0.12, 2.0, 5), 'spiderBody', 0, 1.0, 0);
-    upper.rotation.z = -side * 1.0;
-    const lower = G();
-    add(lower, CY(0.04, 0.09, 2.4, 5), 'spiderBody', 0, -1.2, 0);
-    lower.position.set(-side * 1.68, 1.08, 0);
-    lower.rotation.z = side * 0.35;
-    leg.add(upper, lower);
-    leg.position.set(side * 0.5, 1.6, 0.4 - k * 0.45);
-    leg.rotation.y = side * a;
-    b.add(leg);
-  }
-  return g;
-}
-
-export function ogre() {
-  const [g, b] = creature();
-  limb(b, 'ogreSkin', -0.7, 4.2, 0, 4.2, 0.42);
-  limb(b, 'ogreSkin', 0.7, 4.2, 0, 4.2, 0.42);
-  add(b, BX(2.0, 0.9, 1.4), 'leather', 0, 4.1, 0);
-  add(b, SP(1.5, 14, 10), 'ogreSkin', 0, 6.2, 0.1).scale.set(1, 1.15, 0.85);
-  add(b, SP(0.7, 10, 8), 'ogreSkin', 0, 8.3, 0.4);
-  add(b, BX(1.1, 0.4, 0.5), 'ogreSkin', 0, 7.95, 0.85);
-  add(b, SP(0.1, 6, 4), 'eyeRed', -0.25, 8.45, 1.0);
-  add(b, SP(0.1, 6, 4), 'eyeRed', 0.25, 8.45, 1.0);
-  limb(b, 'ogreSkin', -1.6, 7.3, 0, 3.6, 0.32, -0.15, 0.25);
-  const arm = limb(b, 'ogreSkin', 1.6, 7.3, 0, 3.6, 0.32, -0.8, -0.2);
-  const club = G();
-  add(club, CY(0.25, 0.55, 4.2, 8), 'log', 0, 1.6, 0);
-  for (let k = 0; k < 5; k++) add(club, CO(0.1, 0.4, 4), 'iron', Math.cos(k) * 0.5, 2.6 + k * 0.25, Math.sin(k) * 0.5, 0, 0, k);
-  club.position.set(0, -3.6, 0.2); club.rotation.x = 1.0;
-  arm.add(club);
-  return g;
-}
+// The other creatures are built in creatures.js, on a shared body.
+export { skeletonWarrior, goblin, orc, cultist, wraith, oozeCube, giantSpider, ogre } from './creatures.js';
 
 export function youngDragon() {
   const [g, b] = creature();

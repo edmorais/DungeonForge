@@ -262,7 +262,9 @@ A map with creatures, traps, keys, a locked door or an exit is a game. You are a
 | End your turn in a fight | Enter, or T |
 | Hold your torch up or down | F |
 | Peaceful mode (creatures do not attack) | P |
-| Back to the editor | Esc |
+| Pause the walk and go back to the editor | Esc |
+
+**Pausing.** Esc pauses a walk; it does not end it. The **Walk through** button then reads **Resume walk**, and pressing it (or V) offers to resume where you left it, fight and all, or to start again. A paused walk belongs to the map as it was: **any change to the map resets it**, and the app warns you when you pick up a building tool.
 
 ### The heroes
 
@@ -278,15 +280,17 @@ The rogue moves 36 ft a turn, the others 30 ft. Special actions come back when y
 ### Fights
 
 - A creature **notices** you from 18 ft away (24 ft if it can attack from a distance) when no wall or closed door is in the way. Creatures standing near it join in. Everyone rolls **initiative** (a d20) to set the order of turns.
-- **On your turn** you may move up to your speed, counted in squares as you cross them, and take **one action**: an attack, most special actions, drinking a potion, opening a chest or disarming a trap. Opening a door is free. Press **Enter** to end your turn; it ends by itself when you have nothing left.
-- **An attack** is a d20 plus the attacker's bonus against the target's armour class (AC). A 20 on the die always hits and rolls the damage dice twice; a 1 always misses. Every roll is shown on screen.
+- **On your turn** the squares you can still walk to are outlined on the floor. You may move up to your speed, counted in squares as you cross them, and take **one action**: an attack, most special actions, drinking a potion, opening a chest or disarming a trap. Opening a door is free. Press **Enter** to end your turn; it ends by itself when you have nothing left.
+- **An attack** is a d20 plus the attacker's bonus against the target's armour class (AC). A 20 on the die always hits and rolls the damage dice twice; a 1 always misses. Every roll is shown on screen, the damage floats up from the creature, and each creature in the fight carries a health bar.
 - **On their turns** creatures walk towards you, around walls and each other, and strike when they reach you. Some attack from a distance. They do not open doors, so a closed door stops them.
 - If you get far away and out of sight of every foe, you **slip away** and the fight ends. If your health reaches 0 the run ends.
 - If you strike first, before a creature has noticed you, you act first.
 
 ### Goals, keys and traps
 
-These pieces are under **Adventure** in the palette (the locked door is under **Doors**):
+**Quickest way:** ☰ → *Make this map a game* reads how your map can be walked and adds a start, an exit as far from it as the map allows, a locked door on the only way there with its key hidden off the route, and two traps along the way. It leaves alone whatever the map already has, and Ctrl+Z removes what it added. Every sample map and the random keep are set up this way.
+
+To place them yourself, the pieces are under **Adventure** in the palette (the locked door is under **Doors**):
 
 - **Start** is where the walk begins; turn it with R to set the way you face. Without one you start at the keep's gate or near the middle of the map.
 - **Exit** ends the run when you reach it and press E. You then see a summary: time, gold, experience, creatures defeated, damage dealt and taken, and traps.
@@ -306,7 +310,7 @@ These pieces are under **Adventure** in the palette (the locked door is under **
 - **Falling.** If you walk off a ledge you fall. A hero takes 1d6 for every 10 ft.
 - **The minimap** in the corner shows the floors, walls and loot around you, the exit in violet and the creatures you are fighting in red. Higher ground is lighter and lower ground darker.
 - **In the dark void** you can only walk on squares that have a floor.
-- **The sunken crypt** sample is set up as a game: the crypt is locked, the key is in the barracks and the exit is in the hidden vault.
+- **The sunken crypt** sample is set up by hand: the crypt is locked, the key is in the barracks and the exit is in the hidden vault.
 
 ---
 

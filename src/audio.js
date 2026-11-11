@@ -124,6 +124,15 @@ export class Ambience {
   hit() { if (!this.ready()) return; this.noiseBurst({ freq: 300, type: 'lowpass', peak: 0.6, decay: 0.18 }); this.tone({ freq: 160, to: 60, type: 'triangle', peak: 0.3, decay: 0.2 }); }
   miss() { if (this.ready()) this.noiseBurst({ freq: 2600, q: 0.8, peak: 0.16, attack: 0.02, decay: 0.14 }); }
   dice() { if (!this.ready()) return; for (let k = 0; k < 5; k++) this.tone({ freq: 900 + Math.random() * 700, type: 'triangle', peak: 0.05, attack: 0.002, decay: 0.04, delay: k * 0.055 + Math.random() * 0.02 }); }
+  step(wet = false) { if (this.ready()) this.noiseBurst({ freq: wet ? 900 : 190, type: wet ? 'bandpass' : 'lowpass', q: 0.7, peak: wet ? 0.07 : 0.13, attack: 0.004, decay: wet ? 0.12 : 0.07 }); }
+  cast() { if (!this.ready()) return; this.tone({ freq: 320, to: 1250, type: 'sawtooth', peak: 0.05, attack: 0.02, decay: 0.26, dest: this.echo }); this.noiseBurst({ freq: 3200, q: 1.4, peak: 0.1, attack: 0.02, decay: 0.3 }); }
+  trap() { if (!this.ready()) return; this.tone({ freq: 1500, to: 500, type: 'square', peak: 0.07, attack: 0.001, decay: 0.05 }); this.noiseBurst({ freq: 1100, q: 2, peak: 0.4, attack: 0.002, decay: 0.16 }); }
+  key() { if (!this.ready()) return; for (const [f, d] of [[1320, 0], [1760, 0.09], [2640, 0.18]]) this.tone({ freq: f, peak: 0.07, attack: 0.003, decay: 0.3, delay: d, dest: this.echo }); }
+  locked() { if (!this.ready()) return; for (let k = 0; k < 3; k++) this.tone({ freq: 230 + k * 20, to: 180, type: 'square', peak: 0.05, attack: 0.002, decay: 0.05, delay: k * 0.08 }); }
+  death() { if (!this.ready()) return; this.tone({ freq: 210, to: 45, type: 'sawtooth', peak: 0.09, attack: 0.02, decay: 0.7, dest: this.echo }); this.noiseBurst({ freq: 140, type: 'lowpass', peak: 0.5, attack: 0.25, decay: 0.3 }); }
+  heal() { if (!this.ready()) return; for (const [f, d] of [[523, 0], [659, 0.08], [784, 0.16], [1047, 0.26]]) this.tone({ freq: f, peak: 0.06, attack: 0.01, decay: 0.45, delay: d, dest: this.echo }); }
+  win() { if (!this.ready()) return; for (const [f, d] of [[392, 0], [523, 0.16], [659, 0.32], [784, 0.48], [1047, 0.7]]) this.tone({ freq: f, type: 'triangle', peak: 0.12, attack: 0.01, decay: 0.7, delay: d, dest: this.echo }); }
+  lose() { if (!this.ready()) return; for (const [f, d] of [[330, 0], [294, 0.28], [247, 0.56], [196, 0.9]]) this.tone({ freq: f, to: f * 0.94, type: 'triangle', peak: 0.12, attack: 0.02, decay: 0.9, delay: d, dest: this.echo }); }
   growl(big = false) {
     if (!this.ready()) return;
     for (const det of [0, 7, -5]) this.tone({ freq: (big ? 55 : 95) + det, to: (big ? 40 : 70) + det, type: 'sawtooth', peak: big ? 0.08 : 0.05, attack: 0.15, decay: big ? 1.6 : 0.8, dest: this.echo });

@@ -1,4 +1,5 @@
 import { KEEP_I0, KEEP_J0, KEEP_W, KEEP_D, GRID_W, GRID_D } from './config.js';
+import { addAdventure } from './adventure.js';
 
 // Programmatic sample maps. Coordinates in the crypt are relative to the keep's corner.
 
@@ -239,6 +240,7 @@ export function banditCamp(state) {
   O('flowers', 6, 22);
   O('standingStone', 34, 22);
   O('bush', -2, 22);
+  addAdventure(state, { start: [cx - 1, cz + 13] }); // the walk starts outside the gate
   state.data.name = 'Bandit camp at Greyford';
 }
 
@@ -275,6 +277,7 @@ export function ruinedShrine(state) {
   O('dragon', 19, 5, 3);
   O('skeleton', 6, 9, 2);
   O('skeleton', 10, 2, 0);
+  addAdventure(state);
   state.data.name = 'Shrine of the drowned saint';
 }
 
@@ -363,6 +366,7 @@ export function randomKeep(state, seed = Date.now()) {
   for (let j = J0 + KEEP_D; j < GRID_D; j++) for (const di of [-1, 0]) state.setFloor(ent + di, j, 'cobble');
   state.addObject('lanternPost', ent - 3, J0 + KEEP_D + 1, 0);
   state.addObject('lanternPost', ent + 2, J0 + KEEP_D + 1, 2);
+  addAdventure(state);
   state.data.name = keepName(rand);
   return leaves.length;
 }
@@ -527,6 +531,7 @@ export function ziggurat(state) {
   O('skeleton', 21, 27, 1);
   O('lanternPost', 9, 35, 0);
   O('lanternPost', 12, 35, 0);
+  addAdventure(state);
   state.data.name = 'Ziggurat of the Dawn Sun';
 }
 
@@ -633,6 +638,7 @@ export function deepMine(state) {
   for (const [a, b] of [[-3, 3], [-5, 14], [22, 34], [36, 34], [40, 4], [42, 20], [19, -3], [33, -3]]) O(b % 3 ? 'pine' : 'boulder', a, b);
   O('standingStone', -4, 26);
   O('deadTree', 38, 0);
+  addAdventure(state);
   state.data.name = 'The Deepdelve Mine';
 }
 
@@ -716,6 +722,7 @@ export function sunkenArena(state) {
   O('crates', -19, 0);
   O('barrel', 18, 0);
   O('well', 20, 2);
+  addAdventure(state);
   state.data.name = 'The Sunken Arena of Varn';
 }
 
@@ -791,6 +798,7 @@ export function lichSpires(state) {
   O('lanternPost', -15, -4, 0);
   O('standingStone', -14, -6);
   O('bones', -12, -5);
+  addAdventure(state, { voidMap: true });
   state.data.name = 'Spires of the Pale Lich';
 }
 
@@ -857,5 +865,6 @@ export function cragTower(state) {
   for (const [a, b] of [[-20, -10], [16, -12], [18, 4], [-19, 9], [14, 13]]) O('pine', a, b);
   O('standingStone', 15, -2);
   O('deadTree', -16, 10);
+  addAdventure(state);
   state.data.name = 'Watchtower on the Grey Crag';
 }

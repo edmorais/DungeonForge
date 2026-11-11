@@ -87,6 +87,7 @@ export function buildUI(root, H) {
   const menu = h('div', { class: 'menu', role: 'menu' },
     h('button', { onclick: () => { closeMenu(); H.newDungeon(); } }, 'New dungeon…', h('kbd', {}, 'N')),
     h('button', { onclick: () => { closeMenu(); H.generate(); } }, 'Generate a random keep', h('kbd', {}, '')),
+    h('button', { title: 'Adds a start, an exit, a locked door with its key and two traps, placed along the way through your map', onclick: () => { closeMenu(); H.makeGame(); } }, 'Make this map a game', h('kbd', {}, '')),
     h('button', { onclick: () => { closeMenu(); H.openFile(); } }, 'Import a map…', h('kbd', {}, 'Ctrl O')),
     h('button', { onclick: () => { closeMenu(); H.saveFile(); } }, 'Export this map…', h('kbd', {}, 'Ctrl S')),
     h('button', { onclick: () => { closeMenu(); H.screenshot(); } }, 'Take a picture', h('kbd', {}, '')),
@@ -255,7 +256,11 @@ export function buildUI(root, H) {
   const touchOn = () => root.classList.add('touch-on');
   if (matchMedia('(pointer: coarse)').matches) touchOn();
   window.addEventListener('touchstart', touchOn, { passive: true, once: true });
-  const walkhud = h('div', { class: 'walkhud' }, hurt, cross, prompt, purse, hpBar, heroLine, walkName, minimap, banner, dice, gamelog, turnbar, touch,
+  // numbers that float up from a creature when it is hit, and a health bar over each foe in a fight;
+  // main.js moves them over the 3D view every frame
+  const overlay = h('div', { class: 'overlay' });
+  const bars = [];
+  const walkhud = h('div', { class: 'walkhud' }, hurt, overlay, cross, prompt, purse, hpBar, heroLine, walkName, minimap, banner, dice, gamelog, turnbar, touch,
     h('div', { class: 'walkhelp' }, 'WASD move · mouse look · Shift run · Space jump · E or click to act · R special · F torch · Esc to return'));
 
   // ---------- choose a hero ----------
@@ -276,6 +281,21 @@ export function buildUI(root, H) {
         h('button', { class: 'btn', onclick: () => { close(); onPick(null); } }, 'Just look around'),
         h('button', { class: 'btn', onclick: close }, 'Cancel'))));
     classBg.classList.add('open');
+  }
+
+  // ---------- a paused walk ----------
+  const resumeBg = h('div', { class: 'modal-bg', onclick: (e) => { if (e.target === resumeBg) resumeBg.classList.remove('open'); } });
+  function askResume(text, { resume, restart }) {
+    const close = () => resumeBg.classList.remove('open');
+    resumeBg.innerHTML = '';
+    resumeBg.append(h('div', { class: 'modal summary won', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'A walk is paused' },
+      h('h2', {}, 'A walk is paused'),
+      h('p', { class: 'lede' }, `${text}. Resume it where you left it, or start again from the beginning. Changing the map resets a paused walk.`),
+      h('div', { class: 'foot' },
+        h('button', { class: 'btn', onclick: close }, 'Cancel'),
+        h('button', { class: 'btn', onclick: () => { close(); restart(); } }, 'Start again'),
+        h('button', { class: 'btn primary', onclick: () => { close(); resume(); } }, 'Resume'))));
+    resumeBg.classList.add('open');
   }
 
   // ---------- end of a run ----------
@@ -385,7 +405,7 @@ export function buildUI(root, H) {
 
   const loading = h('div', { class: 'loading' }, h('div', {}, 'Dungeon Forge', h('small', {}, 'Carving stone…')));
 
-  root.append(topbar, palette, status, compass, toasts, walkhud, coach, startBg, helpBg, ioBg, classBg, endBg, loading);
+  root.append(topbar, palette, status, compass, toasts, walkhud, coach, startBg, helpBg, ioBg, classBg, resumeBg, endBg, loading);
   showCat('floor');
   showDesc(null);
 
@@ -438,6 +458,7 @@ export function buildUI(root, H) {
     walkMode(on) {
       root.classList.toggle('walk-mode', on);
       walkhud.classList.toggle('on', on);
+      hurt.classList.remove('on'); // showing the HUD again would replay the red flash
     },
     setPrompt(text, kind = null, sub = null) {
       cross.className = 'cross' + (kind ? ' ' + kind : '');
@@ -494,14 +515,42 @@ export function buildUI(root, H) {
       while (gamelog.children.length > 5) gamelog.firstChild.remove();
     },
     clearGame() { gamelog.innerHTML = ''; dice.classList.remove('on'); hurt.classList.remove('on'); clearTimeout(rollTimer); clearInterval(rollSpin); },
+    addFloat(text, kind) {
+      const el = h('div', { class: 'float ' + kind }, text);
+      overlay.append(el);
+      return el;
+    },
+    // n health bars, kept from frame to frame: [{ el, fill, name }]
+    foeBars(n) {
+      while (bars.length < n) {
+        const fill = h('i', {}), name = h('span', {}, '');
+        const el = h('div', { class: 'foebar' }, name, h('div', {}, fill));
+        overlay.append(el);
+        bars.push({ el, fill, name });
+      }
+      for (let k = n; k < bars.length; k++) bars[k].el.style.display = 'none';
+      return bars;
+    },
+    // a brief tint of the whole view: 'heal'
+    flash(kind) {
+      hurt.className = 'hurt';
+      void hurt.offsetWidth;
+      hurt.className = 'hurt on ' + kind;
+    },
     pickClass,
     showSummary,
+    askResume,
+    // a walk waits to be resumed (text describes it), or none does (null)
+    setPaused(text) {
+      walkBtn.textContent = text ? 'Resume walk' : 'Walk through';
+      walkBtn.title = text ? `A walk is paused: ${text}. Changing the map resets it. (V)` : 'Explore your dungeon in first person (V)';
+    },
     minimap,
     setHealth(hp, max, peaceful, wasHit = false) {
       hpFill.style.width = (100 * hp / max) + '%';
       hpFill.classList.toggle('low', hp / max < 0.35);
       hpText.textContent = peaceful ? 'Peaceful' : `${hp} / ${max}`;
-      if (wasHit) { hurt.classList.remove('on'); void hurt.offsetWidth; hurt.classList.add('on'); }
+      if (wasHit) { hurt.className = 'hurt'; void hurt.offsetWidth; hurt.className = 'hurt on'; }
     },
     setPurse(gp, xp = 0) { purse.textContent = `${gp.toLocaleString()} gp` + (xp ? ` · ${xp.toLocaleString()} XP` : ''); },
     showStart() { startBg.classList.add('open'); },
@@ -512,8 +561,8 @@ export function buildUI(root, H) {
     },
     hideStart() { startBg.classList.remove('open'); },
     showHelp() { helpBg.classList.toggle('open'); },
-    modalOpen() { return [startBg, helpBg, ioBg, classBg, endBg].some((m) => m.classList.contains('open')); },
-    closeModals() { for (const m of [helpBg, ioBg, classBg, endBg]) m.classList.remove('open'); },
+    modalOpen() { return [startBg, helpBg, ioBg, classBg, resumeBg, endBg].some((m) => m.classList.contains('open')); },
+    closeModals() { for (const m of [helpBg, ioBg, classBg, resumeBg, endBg]) m.classList.remove('open'); },
     openIO,
     closeIO() { ioBg.classList.remove('open'); },
     selectIO() { ioArea.focus(); ioArea.select(); },

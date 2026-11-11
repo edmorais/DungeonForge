@@ -207,6 +207,17 @@ select.styled:hover { border-color: var(--line); }
 .gamelog .good:last-child { color: #9ad0c6; }
 .gamelog .bad:last-child { color: #f2a497; }
 
+/* over the 3D view: damage numbers and the health of each foe in the fight */
+.overlay { position: absolute; inset: 0; overflow: hidden; }
+.float { position: absolute; left: 0; top: 0; font-family: var(--display); font-size: 30px; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.9), 0 0 2px #000; white-space: nowrap; will-change: transform; }
+.float.crit { font-size: 42px; color: var(--brass-hi); }
+.float.miss { font-size: 20px; color: var(--muted); }
+.foebar { position: absolute; left: 0; top: 0; text-align: center; will-change: transform; }
+.foebar span { display: block; font-size: 12px; color: var(--vellum); text-shadow: 0 1px 3px #000; text-transform: capitalize; }
+.foebar div { width: 72px; height: 6px; margin-top: 2px; border-radius: 3px; background: rgba(0,0,0,.6); border: 1px solid rgba(231,223,204,.35); overflow: hidden; }
+.foebar i { display: block; height: 100%; background: linear-gradient(90deg, #8e2a1e, #d2533f); transition: width .25s; }
+.hurt.heal { background: radial-gradient(ellipse at center, transparent 45%, rgba(60, 190, 150, .45)); }
+
 /* choose a hero, end of a run */
 .starts.heroes { grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .starts.heroes .start { grid-template-columns: 1fr; align-items: start; padding: 14px 14px 13px; }

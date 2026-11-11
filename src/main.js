@@ -15,6 +15,8 @@ import { Editor } from './editor.js';
 import { Walker } from './walk.js';
 import { Game } from './game.js';
 import { CLASSES } from './rules.js';
+import { addAdventure, describeAdventure } from './adventure.js';
+import { Fx } from './fx.js';
 import { buildUI } from './ui.js';
 import { renderThumbnails } from './thumbs.js';
 import { Ambience } from './audio.js';
@@ -102,14 +104,78 @@ const game = new Game({
     health: (hp, max, peaceful, hit) => ui.setHealth(hp, max, peaceful, hit),
     purse: (g, xp) => ui.setPurse(g, xp),
     sound: (kind, arg) => audio[kind]?.(arg),
+    fx: (kind, o) => gameFx(kind, o),
     end: (s) => endRun(s),
   },
 });
+
+// ---------- effects of the game: bolts, bursts, numbers that float up, health bars ----------
+const fx = new Fx(scene);
+const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
+const floats = []; // { el, at: Vector3, age }
+function floatText(at, text, kind) { floats.push({ el: ui.addFloat(text, kind), at: V(at), age: 0 }); }
+function gameFx(kind, o) {
+  const jitter = (a, r) => V(a).add(new THREE.Vector3((Math.random() - 0.5) * r, (Math.random() - 0.5) * r, (Math.random() - 0.5) * r));
+  switch (kind) {
+    case 'bolt': fx.bolt(V(o.from), V(o.to), o.hue, { speed: o.speed || 60, size: o.size || 0.26 }); break;
+    case 'missiles': for (let k = 0; k < 3; k++) fx.bolt(jitter(o.from, 0.8), V(o.to), 0xa98cff, { delay: k * 0.09, size: 0.17, speed: 75 }); break;
+    case 'breath': for (let k = 0; k < 14; k++) fx.bolt(V(o.from), jitter(o.to, 2.4), 0xff6a1a, { delay: k * 0.03, size: 0.36, speed: 46 }); break;
+    case 'hit':
+      fx.burst(V(o.burst), o.crit ? 0xffe08a : 0xffffff, { size: o.crit ? 1.7 : 1.0, life: 0.2 });
+      fx.sparks(V(o.burst), 0xffc070, o.crit ? 14 : 6);
+      floatText(o.at, o.crit ? o.text + '!' : o.text, o.crit ? 'crit' : 'hit');
+      break;
+    case 'miss': floatText(o.at, 'miss', 'miss'); break;
+    case 'death': fx.burst(V(o.at), 0x9a8f80, { size: 2.6, life: 0.5, glow: 1.2 }); fx.sparks(V(o.at), 0xcfc4b0, 14, { spread: 6 }); break;
+    case 'gold': fx.sparks(V(o.at), 0xffd27a, 16, { spread: 3, up: 6, life: 0.9 }); break;
+    case 'heal': ui.flash('heal'); break;
+    case 'trap':
+      if (o.t === 'plate') { for (let k = 0; k < 6; k++) { const s = k % 2 ? 1 : -1, y = 1.2 + Math.random() * 3.2, z = (Math.random() - 0.5) * 2; fx.bolt(V(o.at).add(new THREE.Vector3(s * 1.5, y, z)), V(o.at).add(new THREE.Vector3(-s * 1.5, y, z)), 0xd8dce4, { speed: 70, size: 0.06, delay: k * 0.03 }); } }
+      else if (o.t === 'fireRune') { fx.burst(V(o.at).add(new THREE.Vector3(0, 1.4, 0)), 0xff7a2a, { size: 3.4, life: 0.55 }); fx.sparks(V(o.at), 0xff9a3a, 24, { spread: 4, up: 10, life: 0.9, size: 0.12 }); }
+      else fx.sparks(V(o.at), 0xc8ccd4, 10, { spread: 3, up: 5 });
+      break;
+    default:
+  }
+}
+// place the floating numbers and the health bars of the creatures in the fight over the 3D view
+const _hud = new THREE.Vector3();
+function toHud(at) {
+  _hud.copy(at).project(camera);
+  if (_hud.z > 1 || Math.abs(_hud.x) > 1.1 || Math.abs(_hud.y) > 1.1) return null;
+  return [((_hud.x + 1) / 2) * window.innerWidth, ((1 - _hud.y) / 2) * window.innerHeight];
+}
+function updateOverlays(dt) {
+  for (let k = floats.length - 1; k >= 0; k--) {
+    const f = floats[k];
+    f.age += dt;
+    f.at.y += dt * 1.5;
+    const p = f.age < 1.1 ? toHud(f.at) : null;
+    if (f.age >= 1.1) { f.el.remove(); floats.splice(k, 1); continue; }
+    f.el.style.display = p ? 'block' : 'none';
+    if (p) { f.el.style.transform = `translate(${p[0]}px, ${p[1]}px) translate(-50%, -50%)`; f.el.style.opacity = String(Math.min(1, (1.1 - f.age) * 3)); }
+  }
+  const foes = game.combat ? game.foes() : [];
+  const bars = ui.foeBars(foes.length);
+  foes.forEach((m, k) => {
+    const p = game.sees(m) ? toHud(V(game.pointOf(m, 1.12))) : null;
+    bars[k].el.style.display = p ? 'block' : 'none';
+    if (!p) return;
+    bars[k].el.style.transform = `translate(${p[0]}px, ${p[1]}px) translate(-50%, -100%)`;
+    bars[k].fill.style.width = `${Math.round((100 * m.hp) / m.st.hp)}%`;
+    if (bars[k].name.textContent !== m.name) bars[k].name.textContent = m.name;
+  });
+}
+function clearOverlays() {
+  fx.clear();
+  for (const f of floats) f.el.remove();
+  floats.length = 0;
+  ui.foeBars(0);
+}
 const walker = new Walker({
   camera, dom: canvas, state, world, env, game,
   onPrompt: (t, kind, sub) => ui.setPrompt(t, kind, sub),
   onToast: (m, k) => ui.toast(m, k),
-  onExit: () => exitWalk(),
+  onExit: (run) => exitWalk(run),
   onSound: (kind, arg) => audio[kind]?.(arg),
 });
 const audio = new Ambience();
@@ -125,6 +191,8 @@ function refreshStats() {
 }
 let lastPlaceSound = 0;
 state.onChange(() => {
+  // the paused walk was played on the map as it was; a changed map starts a new one
+  if (paused) dropPaused('The map changed, so the paused walk was reset.');
   if (performance.now() - lastPlaceSound > 90) { lastPlaceSound = performance.now(); audio.place(); }
   pool.invalidate();
   editor.updateSelBox();
@@ -137,7 +205,25 @@ state.onSetting((k, v) => {
   if (k === 'light') { env.setLightLevel(v); ui.setLight(v); }
 });
 
+// A walk left with Esc waits here until Walk through resumes it or the map changes.
+let paused = null;
+let pauseWarned = false;
+function dropPaused(msg = '') {
+  if (!paused) return;
+  paused = null;
+  game.stop();
+  ui.setPaused(null);
+  if (msg) ui.toast(msg);
+}
+// picking up a building tool with a walk paused: say once what an edit will cost
+function warnPaused() {
+  if (!paused || pauseWarned) return;
+  pauseWarned = true;
+  ui.toast('A walk is paused. Changing the map will reset it.', 'danger');
+}
+
 function selectItem(id) {
+  warnPaused();
   editor.select(id);
   ui.setTool('place');
   ui.setSelected(id);
@@ -151,6 +237,7 @@ function selectItem(id) {
 }
 
 function setTool(t) {
+  if (t !== 'view' && t !== 'pick') warnPaused();
   editor.setTool(t);
   ui.setTool(t);
   ui.setTip({
@@ -214,6 +301,13 @@ Object.assign(H, {
   },
   help: () => ui.showHelp(),
   start: (kind) => { startedAt = performance.now(); auto.reset(); startDungeon(kind); ui.showCoach(); },
+  makeGame: () => {
+    state.checkpoint();
+    const what = describeAdventure(addAdventure(state, { voidMap: state.data.landscape === 'void' }));
+    if (!what) { state.undoStack.pop(); ui.toast('Nothing to add: this map already has its game pieces, or it has too little floor to walk.'); return; }
+    state.emit();
+    ui.toast(`Added ${what}. Ctrl+Z removes them.`);
+  },
   generate: () => {
     state.checkpoint();
     const rooms = randomKeep(state);
@@ -321,6 +415,10 @@ let lastClass = null;
 try { lastClass = localStorage.getItem('dungeon-forge:class'); } catch { /* no storage */ }
 function beginWalk() {
   if (mode === 'walk' || ui.modalOpen()) return;
+  if (paused) {
+    ui.askResume(game.summary(), { resume: () => enterWalk(null, paused), restart: () => { dropPaused(); beginWalk(); } });
+    return;
+  }
   const d = state.data;
   const playable = d.objects.some((o) => { const it = byId[o.t]; return it.cat === 'creature' || it.trap || it.key || it.exit; })
     || Object.values(d.edges).some((e) => byId[e.t]?.locked);
@@ -335,7 +433,8 @@ function endRun(s) {
   walker.exit();
   ui.showSummary(s, { again: () => enterWalk(s.classId), back: () => {} });
 }
-function enterWalk(classId = null) {
+// classId starts a new walk as that hero (null: just looking around); `run` resumes a paused one
+function enterWalk(classId = null, run = null) {
   if (mode === 'walk') return;
   mode = 'walk';
   editorCam = { pos: camera.position.clone(), target: editor.controls.target.clone() };
@@ -346,14 +445,28 @@ function enterWalk(classId = null) {
   ui.walkMode(true);
   applyViewOffset();
   auto.reset(); // a first-person view costs differently; learn again from the current step
+  if (run) {
+    paused = null;
+    ui.setPaused(null);
+    walker.resume(run);
+    ui.toast('The walk goes on. Esc pauses it again.');
+    return;
+  }
+  dropPaused();
   ui.clearGame();
   walker.enter(classId);
   const hasExit = state.data.objects.some((o) => byId[o.t].exit);
-  ui.toast(classId ? (hasExit ? 'Find the exit. Esc returns to the editor.' : 'This map has no exit piece, so the run ends only when you leave with Esc.') : 'Click to look around. Press Esc to return to the editor.');
+  ui.toast(classId ? (hasExit ? 'Find the exit. Esc pauses the walk.' : 'This map has no exit piece. Esc pauses the walk.') : 'Click to look around. Press Esc to return to the editor.');
 }
-function exitWalk() {
+// `run` is a walk that is still going (see Walker.exit): keep it so it can be resumed
+function exitWalk(run = null) {
   if (mode !== 'walk') return;
   mode = 'edit';
+  paused = run;
+  pauseWarned = false;
+  clearOverlays();
+  ui.setPaused(run ? game.summary() : null);
+  if (run) ui.toast('Walk paused. Walk through resumes it. Changing the map resets it.');
   world.setWalkMode(false);
   if (cutIndex !== 0) world.setCut(CUTS[cutIndex].h);
   env.setWorkLight(0.8);
@@ -790,6 +903,8 @@ function step() {
   } else {
     walker.update(dt);
     focus.copy(camera.position);
+    fx.update(dt);
+    updateOverlays(dt);
     mapTimer -= dt;
     if (mapTimer <= 0) { mapTimer = 0.1; drawMinimap(); }
   }

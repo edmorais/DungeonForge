@@ -83,6 +83,9 @@ The first build compiles a few hundred Rust crates and takes several minutes; la
 | `src/editor.js` | Camera, grid, ghost previews and the editing tools |
 | `src/walk.js` | First-person movement, jumping, collision, what the walker aims at, and input (keyboard and mouse, gamepad, touch) |
 | `src/rules.js` | Tabletop rules as plain data and dice: the four hero classes, creature stats, attack and saving rolls. Change the balance here |
+| `src/adventure.js` | Reads how a map can be walked and adds a start, exit, locked door with key and traps (the menu's *Make this map a game*, the samples and the random keep) |
+| `src/creatures.js` | The creature models, built on one shared two-legged body with a weapon arm that swings |
+| `src/fx.js` | Pooled glowing effects for the game: bolts, bursts and sparks |
 | `src/game.js` | The game played in walk mode: noticing, initiative, turns, creature path-finding and attacks, traps, keys, the exit and the end-of-run summary |
 | `src/samples.js` | The sample maps, the random keep generator and themed room furnishing |
 | `src/audio.js` | Procedural ambience and sound effects (Web Audio) |

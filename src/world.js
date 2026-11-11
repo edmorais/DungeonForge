@@ -8,6 +8,8 @@ import { cutPlane } from './materials.js';
 import { footprint, parseEdge, edgeKey, edgeCenter } from './state.js';
 
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+// the sets that hold walk-mode state (see saveRuntime)
+const RUNTIME_SETS = ['openDoors', 'openChests', 'defeated', 'consumed', 'sprung', 'spotted', 'unlocked'];
 
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
@@ -280,6 +282,9 @@ export class World {
             if (n.userData.pickup) dobj.pickup = n;
             if (n.userData.trap) dobj.trap = { n, kind: n.userData.trap, y: n.position.y, t: 1, until: 0 };
             if (n.userData.trapMark) (dobj.marks || (dobj.marks = [])).push(n);
+            if (n.userData.arm) dobj.arm = { n, rx: n.rotation.x };
+            if (n.userData.hover) dobj.hover = { n, y: n.position.y, ry: n.rotation.y };
+            if (n.userData.portal) dobj.portal = n;
             if (n.userData.creature) dobj.creature = { n, y: n.position.y, ry, float: !!n.userData.float, wobble: !!n.userData.wobble, ph: (ob.id * 1.7) % 6.28, yaw: 0, fall: 0, hit: 0, id: ob.id, home: g.position.clone(), path: null };
             if (n.isMesh) { n.castShadow = !n.userData.noShadow; n.receiveShadow = true; }
           });
@@ -451,10 +456,70 @@ export class World {
     this.spotted.clear();
     this.unlocked.clear();
     for (const d of this.dynObjs.values()) {
-      if (d.creature) { d.creature.fall = 0; d.creature.hit = 0; d.creature.path = null; d.group.position.copy(d.creature.home); }
+      if (d.creature) { d.creature.fall = 0; d.creature.hit = 0; d.creature.attack = 0; d.creature.path = null; d.group.position.copy(d.creature.home); }
       if (d.trap) d.trap.until = 0;
     }
     for (const L of this.lights) { L.pos.copy(L.home); L.intensity = L.full; }
+    this.lightsMoved = true;
+    this.showReach([]);
+    this.refreshTraps();
+    this.needsShadow = true;
+  }
+
+  // The squares the hero can still walk to this turn, as faint tiles on the floor ([] hides them).
+  showReach(cells) {
+    if (!this.reachMesh) {
+      if (!cells.length) return;
+      // a square outline with four corner ticks: clear on any floor, and it hides nothing
+      const a = CELL / 2 - 0.2, b = a - 0.14, pos = [];
+      const quad = (x0, z0, x1, z1) => pos.push(x0, 0, z0, x0, 0, z1, x1, 0, z1, x0, 0, z0, x1, 0, z1, x1, 0, z0);
+      quad(-a, -a, a, -b); quad(-a, b, a, a); quad(-a, -b, -b, b); quad(b, -b, a, b);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      this.reachMesh = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: 0x8fe0d0, transparent: true, opacity: 0.6, depthWrite: false }), 640);
+      this.reachMesh.frustumCulled = false;
+      this.reachMesh.renderOrder = 4;
+      this.root.add(this.reachMesh);
+    }
+    const n = Math.min(cells.length, 640);
+    for (let k = 0; k < n; k++) {
+      const [i, j] = cells[k];
+      const stair = this.stairHeight(cellX(i), cellZ(j));
+      this.reachMesh.setMatrixAt(k, _m.makeTranslation(cellX(i), (stair === null ? this.floorTop(i, j) : stair) + 0.06, cellZ(j)));
+    }
+    this.reachMesh.count = n;
+    this.reachMesh.visible = n > 0;
+    this.reachMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  // A paused walk: everything resetRuntime() wipes, as plain data, and how to put it back.
+  saveRuntime() {
+    const s = {};
+    for (const k of RUNTIME_SETS) s[k] = [...this[k]];
+    s.creatureHp = [...this.creatureHp];
+    s.runtimePos = [...this.runtimePos];
+    return s;
+  }
+  restoreRuntime(s) {
+    this.resetRuntime();
+    for (const k of RUNTIME_SETS) for (const v of s[k]) this[k].add(v);
+    for (const [id, hp] of s.creatureHp) this.creatureHp.set(id, hp);
+    for (const [id, cell] of s.runtimePos) this.runtimePos.set(id, cell);
+    // show it at once: doors and lids open, the fallen lying down, creatures where they walked to
+    for (const [k, de] of this.dynEdges) { de.t = this.openDoors.has(k) ? 1 : 0; this.applyDoor(de); }
+    for (const [id, d] of this.dynObjs) {
+      if (this.openChests.has(id)) d.t = 1;
+      if (d.pickup && this.consumed.has(id)) d.pickup.visible = false;
+      const dark = this.consumed.has(id) || (d.trap?.kind === 'rune' && this.sprung.has(id));
+      const c = d.creature, cell = this.runtimePos.get(id);
+      if (c && this.defeated.has(id)) c.fall = 1;
+      if (c && cell) {
+        const ob = this.creatures.find((o) => o.id === id);
+        const [w, dd] = footprint(ob.t, ob.r);
+        d.group.position.set(lineX(cell.i) + (w * CELL) / 2, this.floorTop(cell.i, cell.j), lineZ(cell.j) + (dd * CELL) / 2);
+      }
+      for (const L of this.lights) if (L.id === id) { if (dark) L.intensity = 0; if (c) L.pos.copy(L.home).add(d.group.position).sub(c.home); }
+    }
     this.lightsMoved = true;
     this.refreshTraps();
     this.needsShadow = true;
@@ -487,6 +552,11 @@ export class World {
     this.runtimePos.set(id, cell);
     const c = this.creatureAt(id);
     if (c) c.path = points.map((p) => new THREE.Vector3(...p));
+  }
+  // play a creature's attack: a lunge and a swing of its weapon arm
+  creatureAttack(id) {
+    const c = this.creatureAt(id);
+    if (c) c.attack = 0.5;
   }
   // damage in hit points; `max` is the creature's full health. Returns { hp, defeated }
   damageCreature(id, amount, max) {
@@ -630,7 +700,8 @@ export class World {
           n.position.y = c.y + (c.float ? 0.3 : 0.25) * e;
         } else {
           const breathe = Math.sin(time * 2.2 + c.ph);
-          n.position.y = c.y + (c.float ? 1.0 + breathe * 0.35 : breathe * 0.03);
+          // floaters drift, the rest breathe, and anything walking bobs with its stride
+          n.position.y = c.y + (c.float ? 1.0 + breathe * 0.35 : breathe * 0.03 + (c.path ? Math.abs(Math.sin(time * 11)) * 0.16 : 0));
           if (c.wobble) n.scale.set(1 + breathe * 0.04, 1 - breathe * 0.05, 1 + breathe * 0.04);
           let want = 0;
           if (this.lookAt) {
@@ -643,8 +714,29 @@ export class World {
           n.rotation.y = c.yaw;
           n.rotation.x = 0;
         }
-        if (c.hit > 0) { c.hit -= dt; n.position.x = Math.sin(c.hit * 70) * 0.18 * (c.hit / 0.35); } else n.position.x = 0;
+        // an attack: a short lunge at the walker, the weapon arm drawn back and then brought down
+        let lunge = 0, swing = 0;
+        if (c.attack > 0) {
+          c.attack -= dt;
+          const f = 1 - Math.max(0, c.attack) / 0.5;
+          lunge = Math.sin(f * Math.PI);
+          swing = Math.sin(f * Math.PI * 2);
+          moving = true;
+        }
+        let shake = 0;
+        if (c.hit > 0) { c.hit -= dt; shake = Math.sin(c.hit * 70) * 0.18 * (c.hit / 0.35); }
+        n.position.x = shake + Math.sin(c.yaw) * lunge * 0.9;
+        n.position.z = Math.cos(c.yaw) * lunge * 0.9;
+        if (dobj.arm) dobj.arm.n.rotation.x = dobj.arm.rx - swing * 0.85;
       }
+      if (dobj.hover) {
+        // a key turns slowly at knee height while the map is walked, and lies still in the editor
+        const hv = dobj.hover;
+        hv.n.rotation.y = this.walkMode ? time * 1.6 : hv.ry;
+        hv.n.position.y = hv.y + (this.walkMode ? 0.95 + Math.sin(time * 2.4) * 0.1 : 0);
+      }
+      if (dobj.portal) dobj.portal.rotation.y = time * 0.5;
+      if (tr && tr.kind === 'rune') tr.n.scale.setScalar(1 + Math.sin(time * 4 + id) * 0.05);
       for (const m of dobj.misc) {
         if (m.kind === 'bubble') {
           m.n.children.forEach((c, k) => {
