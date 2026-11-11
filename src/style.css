@@ -168,6 +168,71 @@ select.styled:hover { border-color: var(--line); }
 .walkhelp { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); font-size: 13.5px; color: var(--vellum); background: rgba(22,27,36,.7); padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line-soft); white-space: nowrap; }
 .walkname { position: absolute; top: 16px; left: 18px; font-family: var(--display); font-size: 22px; color: var(--vellum); text-shadow: 0 2px 8px rgba(0,0,0,.8); }
 .walk-mode .topbar, .walk-mode .palette, .walk-mode .status, .walk-mode .compass { display: none; }
+.walk-mode .toasts { top: 112px; } /* below the turn banner */
+.prompt small { display: block; margin: 2px 0 0 38px; font-size: 13px; color: var(--muted); }
+.cross.key, .cross.exit { background: var(--brass-hi); width: 9px; height: 9px; margin: -4.5px; }
+.cross.trap { background: #ef6a5a; width: 9px; height: 9px; margin: -4.5px; }
+
+/* the game in walk mode: hero, turns, dice, log */
+.heroline { position: absolute; top: 74px; right: 18px; font-size: 13.5px; color: var(--vellum); text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.banner { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; padding: 8px 18px 9px; border-radius: var(--r-md); background: rgba(22,27,36,.82); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.banner.mine { border-color: var(--brass); }
+.banner b { display: block; font-family: var(--display); font-weight: 400; font-size: 23px; line-height: 1.1; color: var(--vellum); }
+.banner.mine b { color: var(--brass-hi); }
+.banner > span { font-size: 12.5px; color: var(--muted); }
+.banner .order { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; margin-top: 6px; max-width: 420px; }
+.banner .order i { font-style: normal; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line-soft); color: var(--muted); }
+.banner .order i.on { border-color: var(--brass); color: var(--brass-hi); }
+.turnbar { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 16px; align-items: center; font-size: 14px; color: var(--vellum); background: rgba(22,27,36,.82); padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.turnbar .spent { color: var(--faint); }
+.turnbar kbd { font: inherit; font-size: 12px; padding: 0 5px; margin-right: 6px; border: 1px solid var(--brass); color: var(--brass-hi); border-radius: 3px; }
+.walkhud.fighting .walkhelp { display: none; }
+.dice { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); display: none; gap: 14px; align-items: center; padding: 10px 16px 10px 12px; border-radius: var(--r-md); background: rgba(22,27,36,.9); border: 1px solid var(--line); box-shadow: var(--shadow); max-width: min(560px, calc(100% - 24px)); }
+.dice.on { display: flex; }
+.dice.good { border-color: var(--verdigris); }
+.dice.bad { border-color: var(--oxblood); }
+.die { flex: none; width: 54px; height: 54px; display: grid; place-items: center; font-family: var(--display); font-size: 28px; color: var(--vellum); background: var(--panel-3); border: 1px solid var(--line); clip-path: polygon(50% 0, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%); font-variant-numeric: tabular-nums; }
+.die.crit { color: #1c1710; background: var(--brass-hi); }
+.die.fumble { color: #f2a497; }
+.die.rolling { animation: tumble .32s linear; }
+@keyframes tumble { from { transform: rotate(-40deg) scale(.85); } to { transform: none; } }
+.dice-text { display: flex; flex-direction: column; font-size: 13.5px; line-height: 1.3; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dice-text b { font-size: 15px; color: var(--vellum); font-weight: 600; }
+.dice-text em { font-style: normal; font-weight: 700; color: var(--vellum); }
+.dice.good .dice-text em { color: var(--verdigris); }
+.dice.bad .dice-text em { color: #f2a497; }
+.dice-text .dmg { color: var(--brass-hi); }
+.gamelog { position: absolute; left: 18px; bottom: 18px; width: min(330px, 40%); display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.3; color: var(--muted); text-shadow: 0 1px 4px rgba(0,0,0,.9); }
+.gamelog div:last-child { color: var(--vellum); }
+.gamelog .good:last-child { color: #9ad0c6; }
+.gamelog .bad:last-child { color: #f2a497; }
+
+/* choose a hero, end of a run */
+.starts.heroes { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.starts.heroes .start { grid-template-columns: 1fr; align-items: start; padding: 14px 14px 13px; }
+.starts.heroes .start.on { border-color: var(--brass); }
+.starts.heroes .start span { display: block; margin-top: 5px; font-size: 13px; }
+.starts.heroes .start .hero-stats { color: var(--vellum); font-variant-numeric: tabular-nums; }
+.modal.summary { width: min(640px, calc(100% - 32px)); border-color: var(--oxblood); }
+.modal.summary.won { border-color: var(--brass); }
+.modal.summary.won h2 { color: var(--brass-hi); }
+.modal.summary .foot { justify-content: flex-end; }
+@media (max-width: 900px) { .starts.heroes { grid-template-columns: 1fr 1fr; } }
+
+/* touch controls: shown once the screen is touched */
+.touch { display: none; }
+.touch-on .walkhud .touch { display: block; }
+.touch-on .walkhelp, .touch-on .turnbar kbd { display: none; }
+.touch-on .gamelog { bottom: 176px; }
+.touch-on .dice { bottom: 190px; }
+.stick { position: absolute; left: 22px; bottom: 22px; width: 132px; height: 132px; border-radius: 50%; background: rgba(22,27,36,.5); border: 1px solid var(--line); pointer-events: auto !important; touch-action: none; }
+.stick i { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px; border-radius: 50%; background: rgba(201,163,90,.55); border: 1px solid var(--brass); }
+.tbtns { position: absolute; right: 14px; bottom: 150px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 190px; }
+.tbtn { pointer-events: auto !important; touch-action: none; min-height: 48px; padding: 6px 8px; border-radius: var(--r-md); border: 1px solid var(--line); background: rgba(22,27,36,.72); color: var(--vellum); font: inherit; font-size: 14px; }
+.tbtn.act { border-color: var(--brass); color: var(--brass-hi); }
+.tbtn.leave { position: absolute; left: 14px; top: 52px; min-height: 40px; width: 40px; padding: 0; }
+@media (min-width: 761px) { .tbtns { bottom: 214px; } }
+@media (prefers-reduced-motion: reduce) { .die.rolling { animation: none; } }
 
 /* ---------- modal ---------- */
 .modal-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, rgba(22,27,36,.55), rgba(10,12,18,.88)); display: none; align-items: center; justify-content: center; z-index: 30; }

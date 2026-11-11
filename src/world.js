@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CELL, WALL_H, FLOOR_Y, GRID_W, GRID_D, cellX, cellZ, lineX, lineZ, hash2, inGrid } from './config.js';
+import { CELL, WALL_H, FLOOR_Y, GRID_W, GRID_D, cellX, cellZ, lineX, lineZ, hash2, inGrid, worldToCell } from './config.js';
 import { G, add, BX } from './geom.js';
 import { updateMask } from './heightmask.js';
 import { byId, POSTS, POST_RANK, framePost } from './catalog.js';
@@ -49,6 +49,13 @@ export class World {
     this.defeated = new Set();
     this.consumed = new Set();
     this.creatureHp = new Map();
+    // walk-mode state that never touches the saved map
+    this.creatures = []; // the creature objects on the map
+    this.runtimePos = new Map(); // id -> { i, j }: where a creature has walked to
+    this.sprung = new Set(); // traps that have gone off or been disarmed
+    this.spotted = new Set(); // hidden traps the walker has noticed
+    this.unlocked = new Set(); // locked doors opened with a key or a pick
+    this.lightsMoved = false; // a light source changed place or went out; main re-deals the light pool
     this.lookAt = null; // player position in walk mode
     this.cutHeight = Infinity;
     this.walkMode = false;
@@ -271,7 +278,9 @@ export class World {
             if (n.userData.lid) dobj.lids.push({ n, rot: n.rotation.x, mimic: n.userData.mimic });
             if (n.userData.bubble || n.userData.spout) dobj.misc.push({ n, kind: n.userData.bubble ? 'bubble' : 'spout', y: n.position.y });
             if (n.userData.pickup) dobj.pickup = n;
-            if (n.userData.creature) dobj.creature = { n, y: n.position.y, ry, float: !!n.userData.float, wobble: !!n.userData.wobble, ph: (ob.id * 1.7) % 6.28, yaw: 0, fall: 0, hit: 0, id: ob.id };
+            if (n.userData.trap) dobj.trap = { n, kind: n.userData.trap, y: n.position.y, t: 1, until: 0 };
+            if (n.userData.trapMark) (dobj.marks || (dobj.marks = [])).push(n);
+            if (n.userData.creature) dobj.creature = { n, y: n.position.y, ry, float: !!n.userData.float, wobble: !!n.userData.wobble, ph: (ob.id * 1.7) % 6.28, yaw: 0, fall: 0, hit: 0, id: ob.id, home: g.position.clone(), path: null };
             if (n.isMesh) { n.castShadow = !n.userData.noShadow; n.receiveShadow = true; }
           });
           this.dynObjs.set(ob.id, dobj);
@@ -279,6 +288,7 @@ export class World {
       }
     }
     for (const [id, dobj] of this.dynObjs) if (!seenObj.has(id)) { this.root.remove(dobj.group); this.dynObjs.delete(id); this.openChests.delete(id); }
+    this.creatures = d.objects.filter((ob) => byId[ob.t].cat === 'creature');
 
     // ---- apply batches ----
     for (const [key, b] of batches) this.set(key, b.parts, b.layer).update(b.mats, b.layer === 'floor' || b.layer === 'edge' ? b.tints : null);
@@ -292,7 +302,12 @@ export class World {
 
   addLight(L, m, id = null) {
     const p = new THREE.Vector3(...L.p).applyMatrix4(m);
-    this.lights.push({ pos: p, color: L.c, intensity: L.i, distance: L.d, flicker: L.f, phase: (p.x * 13.1 + p.z * 7.7) % 6.28, id });
+    this.lights.push({ pos: p, home: p.clone(), color: L.c, intensity: L.i, full: L.i, distance: L.d, flicker: L.f, phase: (p.x * 13.1 + p.z * 7.7) % 6.28, id });
+  }
+  // put out (or relight) the light that belongs to one piece
+  setLight(id, on) {
+    for (const L of this.lights) if (L.id === id) L.intensity = on ? L.full : 0;
+    this.lightsMoved = true;
   }
 
   collectFlames() {
@@ -386,7 +401,28 @@ export class World {
       s.setVisible(!((hideHigh && L === 'wall') || (hideCeil && L === 'ceiling')));
     }
     for (const dobj of this.dynObjs.values()) dobj.group.visible = !((hideHigh && dobj.layer === 'wall') || (hideCeil && dobj.layer === 'ceiling'));
+    this.refreshTraps();
     this.syncFlames();
+    this.needsShadow = true;
+  }
+
+  // ---------- traps ----------
+  // In the editor every trap shows fully. In walk mode a hidden trap's marker shows only once it
+  // is spotted, a rune is gone once it has fired, and spikes wait below the floor.
+  refreshTraps() {
+    for (const [id, dobj] of this.dynObjs) {
+      if (dobj.marks) for (const n of dobj.marks) n.visible = !this.walkMode || this.spotted.has(id) || this.sprung.has(id);
+      if (dobj.trap?.kind === 'rune') dobj.trap.n.visible = !(this.walkMode && this.sprung.has(id));
+    }
+  }
+  spotTrap(id) { this.spotted.add(id); this.refreshTraps(); }
+  // the trap goes off (or is made safe when `quiet`): spikes shoot up for a moment, a rune burns out
+  springTrap(id, quiet = false) {
+    const dobj = this.dynObjs.get(id);
+    this.sprung.add(id);
+    if (dobj?.trap?.kind === 'spikes' && !quiet) dobj.trap.until = this.time + 1.6;
+    if (dobj?.trap?.kind === 'rune') this.setLight(id, false);
+    this.refreshTraps();
     this.needsShadow = true;
   }
 
@@ -410,27 +446,57 @@ export class World {
     this.consumed.clear();
     for (const d of this.dynObjs.values()) if (d.pickup) d.pickup.visible = true;
     this.creatureHp.clear();
-    for (const d of this.dynObjs.values()) if (d.creature) { d.creature.fall = 0; d.creature.hit = 0; }
+    this.runtimePos.clear();
+    this.sprung.clear();
+    this.spotted.clear();
+    this.unlocked.clear();
+    for (const d of this.dynObjs.values()) {
+      if (d.creature) { d.creature.fall = 0; d.creature.hit = 0; d.creature.path = null; d.group.position.copy(d.creature.home); }
+      if (d.trap) d.trap.until = 0;
+    }
+    for (const L of this.lights) { L.pos.copy(L.home); L.intensity = L.full; }
+    this.lightsMoved = true;
+    this.refreshTraps();
+    this.needsShadow = true;
   }
 
   consume(id) {
     this.consumed.add(id);
     const d = this.dynObjs.get(id);
     if (d?.pickup) d.pickup.visible = false;
+    this.setLight(id, false);
     this.needsShadow = true;
   }
 
   creatureAt(id) { return this.dynObjs.get(id)?.creature || null; }
-  // one blow from the player; returns { hpLeft, defeated }
-  hitCreature(id, t) {
-    if (this.defeated.has(id)) return { hpLeft: 0, defeated: true, already: true };
-    const max = byId[t].hp || 1;
-    const hp = (this.creatureHp.has(id) ? this.creatureHp.get(id) : max) - 1;
+  // where a creature stands now: its square on the map, or the one it has walked to
+  creatureCell(ob) { return this.runtimePos.get(ob.id) || ob; }
+  creatureXZ(id) { return this.dynObjs.get(id)?.group.position || null; }
+  // the living creature standing on a square, if any
+  creatureInCell(i, j, exceptId = null) {
+    for (const ob of this.creatures) {
+      if (ob.id === exceptId || this.defeated.has(ob.id)) continue;
+      const p = this.creatureCell(ob);
+      const [w, d] = footprint(ob.t, ob.r);
+      if (i >= p.i && i < p.i + w && j >= p.j && j < p.j + d) return ob;
+    }
+    return null;
+  }
+  // walk a creature to another square through a list of [x, y, z] points (walk mode only)
+  moveCreature(id, cell, points) {
+    this.runtimePos.set(id, cell);
+    const c = this.creatureAt(id);
+    if (c) c.path = points.map((p) => new THREE.Vector3(...p));
+  }
+  // damage in hit points; `max` is the creature's full health. Returns { hp, defeated }
+  damageCreature(id, amount, max) {
+    if (this.defeated.has(id)) return { hp: 0, defeated: true };
+    const hp = Math.max(0, (this.creatureHp.has(id) ? this.creatureHp.get(id) : max) - amount);
     this.creatureHp.set(id, hp);
     const c = this.creatureAt(id);
     if (c) c.hit = 0.35;
     if (hp <= 0) this.defeated.add(id);
-    return { hpLeft: Math.max(0, hp), defeated: hp <= 0 };
+    return { hp, defeated: hp <= 0 };
   }
 
   edgeBlocks(o, i, j) {
@@ -440,6 +506,33 @@ export class World {
     if (!it || !it.blocks) return false;
     if (it.door && this.openDoors.has(a.key)) return false;
     return true;
+  }
+  // Does a wall or a closed door stand between two points on the map? With `sight`, pieces you
+  // can see through (bars, low walls, windows) do not count; with `shutDoors` a closed gate or
+  // portcullis still does, bars or not.
+  segmentBlocked(ax, az, bx, bz, sight = false, shutDoors = false) {
+    let [i, j] = worldToCell(ax, az);
+    const [ti, tj] = worldToCell(bx, bz);
+    const dx = bx - ax, dz = bz - az;
+    const si = Math.sign(dx), sj = Math.sign(dz);
+    let tx = si ? (lineX(i + (si > 0 ? 1 : 0)) - ax) / dx : Infinity;
+    let tz = sj ? (lineZ(j + (sj > 0 ? 1 : 0)) - az) / dz : Infinity;
+    const stepX = si ? CELL / Math.abs(dx) : Infinity, stepZ = sj ? CELL / Math.abs(dz) : Infinity;
+    const stops = (o, a, b) => {
+      if (!this.edgeBlocks(o, a, b)) return false;
+      const it = byId[this.state.anchorOf(o, a, b).e.t];
+      return !(sight && it.seeThrough && !(shutDoors && it.door));
+    };
+    for (let n = 0; n < 240 && (i !== ti || j !== tj); n++) {
+      if (tx < tz) {
+        if (stops('v', si > 0 ? i + 1 : i, j)) return true;
+        i += si; tx += stepX;
+      } else {
+        if (stops('h', i, sj > 0 ? j + 1 : j)) return true;
+        j += sj; tz += stepZ;
+      }
+    }
+    return false;
   }
   // Height of a stair or ramp surface at a world point, or null when no stair covers it.
   // Straight stairs climb toward their back (local -z); spiral stairs climb around their centre.
@@ -472,8 +565,10 @@ export class World {
 
   cellBlocks(i, j) {
     if (i < 0 || j < 0 || i >= GRID_W || j >= GRID_D) return false;
-    for (const ob of this.state.objectsAt(i, j)) if (byId[ob.t].block) return true;
-    return false;
+    // creatures block the square they stand on now, which in walk mode may not be their map square;
+    // a defeated one blocks nothing
+    for (const ob of this.state.objectsAt(i, j)) if (byId[ob.t].block && byId[ob.t].cat !== 'creature') return true;
+    return this.creatureInCell(i, j) !== null;
   }
 
   applyDoor(de) {
@@ -507,7 +602,23 @@ export class World {
         if (L.mimic && dobj.t > 0.99) a += Math.sin(time * 14) * 0.25 - 0.2;
         L.n.rotation.x = L.rot + a;
       }
+      const tr = dobj.trap;
+      if (tr && tr.kind === 'spikes') {
+        const want = !this.walkMode || time < tr.until ? 1 : 0;
+        if (tr.t !== want) {
+          tr.t += Math.sign(want - tr.t) * Math.min(Math.abs(want - tr.t), dt * (want ? 14 : 2.5));
+          tr.n.position.y = tr.y - 0.52 * (1 - tr.t);
+          moving = true;
+        }
+      }
       const c = dobj.creature;
+      if (c && c.path) {
+        // walking to another square (walk mode): a steady pace along the points it was given
+        const gp = dobj.group.position, to = c.path[0], step = dt * 13;
+        if (gp.distanceTo(to) <= step) { gp.copy(to); c.path.shift(); if (!c.path.length) { c.path = null; this.lightsMoved = true; } } else gp.addScaledVector(_v.subVectors(to, gp).normalize(), step);
+        for (const L of this.lights) if (L.id === id) L.pos.copy(L.home).add(gp).sub(c.home);
+        moving = true;
+      }
       if (c) {
         // idle motion doesn't refresh shadow maps (too costly every frame); falls and hits do
         const n = c.n;

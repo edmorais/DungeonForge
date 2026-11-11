@@ -250,25 +250,63 @@ The ♪ button turns on ambient sound: wind that suits the landscape, crackling 
 
 Press **Walk through** (or **V**). Click once to look around with the mouse.
 
+A map with creatures, traps, keys, a locked door or an exit is a game. You are asked to **choose a hero**, or to *just look around* (no fights, no traps, every door opens). A map with none of these is simply walked through.
+
 | To… | Press |
 | --- | --- |
 | Move / run | W A S D / hold Shift |
 | Look around | Move the mouse |
-| Open or close a door, loot a chest, drink, fight | E, or click |
+| Jump | Space |
+| Open or close a door, loot a chest, drink, take a key, attack, disarm a trap | E, or click |
+| Use your hero's special action | R |
+| End your turn in a fight | Enter, or T |
 | Hold your torch up or down | F |
 | Peaceful mode (creatures do not attack) | P |
 | Back to the editor | Esc |
 
-What to expect:
+### The heroes
+
+| Hero | Health | AC | Attack | Special action |
+| --- | --- | --- | --- | --- |
+| **Fighter** | 48 | 17 | Longsword, +7 to hit, 1d8+5 | *Second wind* (2): regain 1d10+6 health without using your action |
+| **Rogue** | 36 | 15 | Short sword, +7, 1d6+5 | *Sneak attack* (3): roll two d20, keep the higher, deal 3d6 more. Also spots hidden traps 6 ft away, disarms traps well and can try to pick a lock |
+| **Wizard** | 30 | 13 | Fire bolt, +7, 2d8, up to 60 ft away | *Magic missile* (3): 3d4+6 that never misses |
+| **Cleric** | 42 | 17 | Mace, +6, 1d8+4, and 1d8 more against the undead | *Cure wounds* (3): regain 2d8+5 health |
+
+The rogue moves 36 ft a turn, the others 30 ft. Special actions come back when you drink from a fountain or a well.
+
+### Fights
+
+- A creature **notices** you from 18 ft away (24 ft if it can attack from a distance) when no wall or closed door is in the way. Creatures standing near it join in. Everyone rolls **initiative** (a d20) to set the order of turns.
+- **On your turn** you may move up to your speed, counted in squares as you cross them, and take **one action**: an attack, most special actions, drinking a potion, opening a chest or disarming a trap. Opening a door is free. Press **Enter** to end your turn; it ends by itself when you have nothing left.
+- **An attack** is a d20 plus the attacker's bonus against the target's armour class (AC). A 20 on the die always hits and rolls the damage dice twice; a 1 always misses. Every roll is shown on screen.
+- **On their turns** creatures walk towards you, around walls and each other, and strike when they reach you. Some attack from a distance. They do not open doors, so a closed door stops them.
+- If you get far away and out of sight of every foe, you **slip away** and the fight ends. If your health reaches 0 the run ends.
+- If you strike first, before a creature has noticed you, you act first.
+
+### Goals, keys and traps
+
+These pieces are under **Adventure** in the palette (the locked door is under **Doors**):
+
+- **Start** is where the walk begins; turn it with R to set the way you face. Without one you start at the keep's gate or near the middle of the map.
+- **Exit** ends the run when you reach it and press E. You then see a summary: time, gold, experience, creatures defeated, damage dealt and taken, and traps.
+- **Key** and **Locked door.** Each key opens one locked door. A rogue without a key gets one try at each lock.
+- **Traps.** Stepping on one calls for a saving throw (a d20 plus your hero's bonus against the trap's number).
+  - *Spike trap* (under Dressing): 2d6, half on a save. It is in plain view and works every time.
+  - *Pressure plate*: 2d8 from darts, none on a save. It looks like one more floor slab until you notice it; then a red mark shows.
+  - *Fire rune*: 3d6, half on a save. It glows, and burns out after one use.
+  - **Jump** over a trap, or aim at one you can see and press E to **disarm** it (a failed try sets it off).
+
+### What else to expect
 
 - **Doors** swing open and closed. Secret doors look like the wall until you open them.
-- **Chests** hold gold, shown in your purse. One kind of chest is a mimic.
-- **Creatures** breathe, float or wobble, turn to watch you and call out when they notice you. Stronger foes take more blows. They fight back: you have 24 health, and the screen flashes red when you are hit. If you fall, you wake at the entrance. Press **P** for peaceful mode if you only want to look around.
-- **Healing.** Drink from a fountain or well to heal fully, or drink a potion for 12 health.
-- **Climbing.** You can walk up stairs and ramps, and step up ledges up to about a foot and a half high. Anything taller needs stairs.
-- **Falling.** If you walk off a ledge you fall, and drops of more than 9 ft hurt.
-- **The minimap** in the corner shows the floors, walls and loot around you. Higher ground is lighter and lower ground darker.
+- **Chests** hold gold, shown in your purse. One kind of chest is a mimic, and it bites.
+- **Healing.** Drink from a fountain or well to heal fully (not during a fight), or drink a potion for 4d4+4 health.
+- **Climbing.** You can walk up stairs and ramps, and step up ledges up to about a foot and a half high. A jump gains one 3 ft level. Anything taller needs stairs.
+- **Falling.** If you walk off a ledge you fall. A hero takes 1d6 for every 10 ft.
+- **The minimap** in the corner shows the floors, walls and loot around you, the exit in violet and the creatures you are fighting in red. Higher ground is lighter and lower ground darker.
 - **In the dark void** you can only walk on squares that have a floor.
+- **The sunken crypt** sample is set up as a game: the crypt is locked, the key is in the barracks and the exit is in the hidden vault.
 
 ---
 
@@ -322,16 +360,33 @@ What to expect:
 | --- | --- |
 | Move / run | W A S D / Shift |
 | Look | Mouse (click once to start) |
-| Open, loot, drink, fight | E or click |
+| Jump | Space |
+| Open, loot, drink, take, attack, disarm | E or click |
+| Special action | R |
+| End your turn | Enter or T |
 | Torch | F |
 | Peaceful mode | P |
 | Back to the editor | Esc |
+
+### Gamepad (walking)
+
+| Action | Input |
+| --- | --- |
+| Move / look | Left stick / right stick |
+| Run | Left trigger, or press the left stick |
+| Jump | A |
+| Open, loot, attack | X, or right trigger |
+| Special action | Y |
+| End your turn | B |
+| Torch | Left bumper |
+| Back to the editor | Start |
 
 ### Touch screens
 
 - With **Move** selected, one finger slides the view.
 - With a building tool, tap or drag to build.
 - Two fingers turn and zoom with any tool.
+- In walk mode a stick appears at the bottom left to move, with **Act**, **Jump**, **End turn** and your special action at the right. Drag anywhere else on the view to look around. The ✕ at the top left returns to the editor.
 
 ---
 

@@ -122,6 +122,8 @@ export class Ambience {
   }
   coins() { if (!this.ready()) return; for (let k = 0; k < 9; k++) this.tone({ freq: 2200 + Math.random() * 2400, peak: 0.06, attack: 0.002, decay: 0.18, delay: k * 0.045 + Math.random() * 0.03 }); }
   hit() { if (!this.ready()) return; this.noiseBurst({ freq: 300, type: 'lowpass', peak: 0.6, decay: 0.18 }); this.tone({ freq: 160, to: 60, type: 'triangle', peak: 0.3, decay: 0.2 }); }
+  miss() { if (this.ready()) this.noiseBurst({ freq: 2600, q: 0.8, peak: 0.16, attack: 0.02, decay: 0.14 }); }
+  dice() { if (!this.ready()) return; for (let k = 0; k < 5; k++) this.tone({ freq: 900 + Math.random() * 700, type: 'triangle', peak: 0.05, attack: 0.002, decay: 0.04, delay: k * 0.055 + Math.random() * 0.02 }); }
   growl(big = false) {
     if (!this.ready()) return;
     for (const det of [0, 7, -5]) this.tone({ freq: (big ? 55 : 95) + det, to: (big ? 40 : 70) + det, type: 'sawtooth', peak: big ? 0.08 : 0.05, attack: 0.15, decay: big ? 1.6 : 0.8, dest: this.echo });

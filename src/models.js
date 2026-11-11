@@ -5,13 +5,21 @@ import { G, add, BX, CY, SP, CO, TO, LA, ICO, extrudeWall, dyn, noShadow } from 
 
 const H = CELL / 2;
 const PI = Math.PI;
+// Two faces of different materials in one plane flicker (z-fighting). Where a trim or a sill meets
+// the wall opening it frames, it overlaps the opening by this much instead of ending flush with it.
+const LIP = 0.03;
 
 // ---------- shared bits ----------
+// Every flame shares these two cones and takes its size from the mesh scale, so world.js can
+// draw all flames of one colour as a single instanced batch (it groups by geometry and material).
+const FLAME_OUTER = CO(0.22, 0.75, 8);
+const FLAME_CORE = CO(0.11, 0.42, 6);
 export function flame(scale = 1, kind = 'flame') {
   const f = dyn(G(), { flame: true });
-  const outer = add(f, CO(0.22 * scale, 0.75 * scale, 8), kind === 'blue' ? 'blueFlame' : kind === 'green' ? 'greenFlame' : 'flame', 0, 0.36 * scale, 0);
-  add(f, CO(0.11 * scale, 0.42 * scale, 6), 'flameCore', 0, 0.22 * scale, 0);
-  void outer;
+  const outer = add(f, FLAME_OUTER, kind === 'blue' ? 'blueFlame' : kind === 'green' ? 'greenFlame' : 'flame', 0, 0.36 * scale, 0);
+  const core = add(f, FLAME_CORE, 'flameCore', 0, 0.26 * scale, 0); // base clear of the outer cone's base
+  outer.scale.setScalar(scale);
+  core.scale.setScalar(scale);
   return noShadow(f);
 }
 
@@ -191,6 +199,23 @@ export function swingDoor(f, leafMat = 'planks', studs = false) {
   return g;
 }
 
+// an iron-bound door with a brass lock on both faces; it needs a key in walk mode
+export function lockedDoor(f) {
+  const g = G();
+  doorFrame(g, f);
+  const pivot = dyn(G(), { door: 'swing', open: -1.75 });
+  pivot.position.set(-OPEN_W / 2, 0.02, 0);
+  pivot.add(leaf(OPEN_W, OPEN_H - 0.05, 'darkWood', true));
+  add(pivot, BX(OPEN_W - 0.1, 0.24, 0.3), clipMat('blackIron'), OPEN_W / 2, 3.95, 0);
+  for (const sz of [-1, 1]) {
+    add(pivot, BX(0.5, 0.62, 0.1), clipMat('brass'), OPEN_W - 0.95, 3.95, sz * 0.2);
+    add(pivot, TO(0.17, 0.045, 6, 12, PI), clipMat('brass'), OPEN_W - 0.95, 4.26, sz * 0.2);
+    add(pivot, CY(0.06, 0.06, 0.04, 8), clipMat('pitBlack'), OPEN_W - 0.95, 3.9, sz * 0.26, PI / 2, 0, 0);
+  }
+  g.add(pivot);
+  return g;
+}
+
 export function doubleDoor(f) {
   const g = G();
   doorFrame(g, f);
@@ -239,14 +264,16 @@ export function archway(f) {
   const g = G();
   add(g, extrudeWall(archShape(1.15, 6.0), WALL_T), clipMat(f), 0, 0, 0);
   const trimShape = new THREE.Shape();
+  // the trim reaches a little into the opening (LIP), so its inner face covers the wall's
   trimShape.absarc(0, 0, 1.4, 0, PI, false);
-  trimShape.lineTo(-1.15, 0);
-  trimShape.absarc(0, 0, 1.15, PI, 0, true);
+  trimShape.lineTo(-1.15 + LIP, 0);
+  trimShape.absarc(0, 0, 1.15 - LIP, PI, 0, true);
   trimShape.lineTo(1.4, 0);
   const trim = extrudeWall(trimShape, WALL_T + 0.2);
   add(g, trim, clipMat('darkStone'), 0, 6.0, 0);
-  add(g, BX(0.25, 6.0, WALL_T + 0.2), clipMat('darkStone'), -1.27, 3.0, 0);
-  add(g, BX(0.25, 6.0, WALL_T + 0.2), clipMat('darkStone'), 1.27, 3.0, 0);
+  const jw = 0.25 + LIP;
+  add(g, BX(jw, 6.0, WALL_T + 0.2), clipMat('darkStone'), -1.4 + jw / 2, 3.0, 0);
+  add(g, BX(jw, 6.0, WALL_T + 0.2), clipMat('darkStone'), 1.4 - jw / 2, 3.0, 0);
   add(g, BX(0.5, 0.7, WALL_T + 0.3), clipMat('darkStone'), 0, 7.4, 0);
   return g;
 }
@@ -264,7 +291,7 @@ export function windowWall(f, stained = false) {
   hole.lineTo(-hw, y0);
   s.holes.push(hole);
   add(g, extrudeWall(s, WALL_T), clipMat(f), 0, 0, 0);
-  add(g, BX(1.8, 0.2, WALL_T + 0.35), clipMat('darkStone'), 0, y0 - 0.1, 0);
+  add(g, BX(1.8, 0.2, WALL_T + 0.35), clipMat('darkStone'), 0, y0 - 0.1 + LIP, 0);
   if (stained) {
     const gs = new THREE.Shape();
     gs.moveTo(-hw, y0); gs.lineTo(hw, y0); gs.lineTo(hw, ys); gs.absarc(0, ys, hw, 0, PI, false); gs.lineTo(-hw, y0);
@@ -456,8 +483,9 @@ export function chair() {
   add(g, BX(1.4, 0.15, 1.4), 'wood', 0, 1.6, 0.1);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, BX(0.15, 1.6, 0.15), 'darkWood', sx * 0.6, 0.8, 0.1 + sz * 0.6);
   for (const sx of [-1, 1]) add(g, BX(0.15, 1.9, 0.15), 'darkWood', sx * 0.6, 2.55, -0.5);
-  add(g, BX(1.35, 0.5, 0.1), 'wood', 0, 3.0, -0.5);
-  add(g, BX(1.35, 0.2, 0.1), 'wood', 0, 2.2, -0.5);
+  // the slats end inside the posts, not flush with their outer faces
+  add(g, BX(1.3, 0.5, 0.1), 'wood', 0, 3.0, -0.5);
+  add(g, BX(1.3, 0.2, 0.1), 'wood', 0, 2.2, -0.5);
   return g;
 }
 
@@ -490,11 +518,14 @@ export function bookshelf() {
   for (let s = 0; s < 5; s++) {
     const y = 0.25 + s * 1.5;
     add(g, BX(2.7, 0.12, 1.25), 'darkWood', 0, y, z);
-    let x = -1.25;
+    let x = -1.25, n = 0;
     while (x < 1.15) {
       const w = 0.12 + rand() * 0.14, h = 0.8 + rand() * 0.45;
       if (rand() < 0.08) { x += 0.3; continue; }
-      const b = add(g, BX(w, h, 0.85), books[Math.floor(rand() * books.length)], x + w / 2, y + 0.06 + h / 2, z + 0.1);
+      // each book is pushed in a little differently, so a leaning book's front never lies in
+      // the same plane as its neighbours'
+      const dz = ((n++ * 7) % 5) * 0.014;
+      const b = add(g, BX(w, h, 0.85 - dz), books[Math.floor(rand() * books.length)], x + w / 2, y + 0.06 + h / 2, z + 0.1 - dz / 2);
       if (rand() < 0.1) b.rotation.z = 0.25;
       x += w + 0.01;
     }
@@ -534,7 +565,7 @@ export function crates() {
   const crate = (s, x, y, z, r) => {
     const c = G();
     add(c, BX(s, s, s, 2), 'wood', 0, s / 2, 0);
-    for (const a of [-1, 1]) for (const b of [-1, 1]) add(c, BX(0.12, s + 0.02, 0.12), 'darkWood', a * (s / 2 - 0.05), s / 2, b * (s / 2 - 0.05));
+    for (const a of [-1, 1]) for (const b of [-1, 1]) add(c, BX(0.12, s + 0.06, 0.12), 'darkWood', a * (s / 2 - 0.03), s / 2, b * (s / 2 - 0.03));
     add(c, BX(s * 1.3, 0.14, 0.08), 'darkWood', 0, s / 2, s / 2 + 0.02, 0, 0, Math.PI / 4);
     c.position.set(x, y, z);
     c.rotation.y = r;
@@ -581,8 +612,8 @@ export function weaponRack() {
   add(g, CY(0.05, 0.05, 5.4, 6), 'darkWood', 0.35, 2.9, z + 0.25);
   add(g, CO(0.12, 0.6, 4), 'steel', 0.35, 5.9, z + 0.25);
   const axe = G();
-  add(axe, CY(0.06, 0.06, 4, 6), 'darkWood', 0, 2.2, 0);
-  add(axe, BX(0.7, 0.8, 0.06), 'steel', 0.3, 3.8, 0);
+  add(axe, CY(0.06, 0.06, 4.3, 6), 'darkWood', 0, 2.35, 0); // the haft stands above the head
+  add(axe, BX(0.7, 0.8, 0.06), 'steel', 0.33, 3.8, 0);
   axe.position.set(0.85, 0.5, z + 0.25);
   g.add(axe);
   return g;
@@ -731,7 +762,7 @@ export function fountain() {
   const s = dyn(G(), { spout: true });
   for (let k = 0; k < 6; k++) {
     const a = (k / 6) * PI * 2;
-    const st = add(s, CY(0.02, 0.04, 1.4, 4), 'water', Math.cos(a) * 1.05, 2.4, Math.sin(a) * 1.05);
+    const st = add(s, CY(0.02, 0.04, 1.4, 4), 'water', Math.cos(a) * 1.05, 2.43, Math.sin(a) * 1.05);
     st.userData.noShadow = true;
   }
   g.add(noShadow(s));
@@ -823,10 +854,77 @@ export function cobweb() {
   return g;
 }
 
+// The spikes are one moving part: up in the editor, below the plate in walk mode until sprung.
 export function spikeTrap() {
   const g = G();
   add(g, BX(2.6, 0.12, 2.6, 3), 'blackIron', 0, 0.06, 0);
-  for (let a = 0; a < 5; a++) for (let b = 0; b < 5; b++) add(g, CO(0.08, 0.5, 4), 'steel', -1.0 + a * 0.5, 0.35, -1.0 + b * 0.5);
+  const spikes = dyn(G(), { trap: 'spikes' });
+  for (let a = 0; a < 5; a++) for (let b = 0; b < 5; b++) {
+    add(g, CY(0.1, 0.1, 0.02, 6), 'pitBlack', -1.0 + a * 0.5, 0.125, -1.0 + b * 0.5);
+    add(spikes, CO(0.08, 0.5, 4), 'steel', -1.0 + a * 0.5, 0.35, -1.0 + b * 0.5);
+  }
+  g.add(spikes);
+  return g;
+}
+
+// A floor slab that sets off darts. Its red marker shows in the editor and, in walk mode, only
+// once the walker has noticed the plate.
+export function pressurePlate() {
+  const g = G();
+  add(g, BX(2.9, 0.03, 2.9, 3), 'flagstone', 0, 0.015, 0); // one more slab among flagstones; it shows on other floors
+  const mark = dyn(G(), { trapMark: true });
+  add(mark, TO(0.9, 0.05, 4, 20), 'eyeRed', 0, 0.09, 0, PI / 2, 0, 0);
+  add(mark, BX(0.12, 0.04, 1.1), 'eyeRed', 0, 0.09, 0, 0, PI / 4, 0);
+  add(mark, BX(0.12, 0.04, 1.1), 'eyeRed', 0, 0.09, 0, 0, -PI / 4, 0);
+  g.add(noShadow(mark));
+  return g;
+}
+
+// A glowing glyph that bursts into flame once.
+export function fireRune() {
+  const g = G();
+  const rune = dyn(G(), { trap: 'rune' });
+  add(rune, TO(1.0, 0.045, 4, 24), 'flame', 0, 0.06, 0, PI / 2, 0, 0);
+  add(rune, TO(0.55, 0.035, 4, 18), 'flame', 0, 0.06, 0, PI / 2, 0, 0);
+  for (let k = 0; k < 3; k++) add(rune, BX(0.07, 0.03, 1.5), 'flame', 0, 0.06, 0, 0, (k * PI) / 3, 0);
+  g.add(noShadow(rune));
+  return g;
+}
+
+// A key to pick up in walk mode.
+export function keyItem() {
+  const root = G();
+  const g = dyn(G(), { pickup: true });
+  add(g, TO(0.2, 0.05, 6, 14), 'gold', -0.35, 0.06, 0, PI / 2, 0, 0);
+  add(g, BX(0.75, 0.07, 0.07), 'gold', 0.2, 0.06, 0);
+  add(g, BX(0.07, 0.07, 0.2), 'gold', 0.52, 0.06, 0.1);
+  add(g, BX(0.07, 0.07, 0.15), 'gold', 0.36, 0.06, 0.08);
+  g.rotation.y = 0.5;
+  g.scale.setScalar(1.5);
+  root.add(g);
+  return root;
+}
+
+// Where a walk begins. The arrow shows the way the walker faces (the piece's back, local -z).
+export function startMark() {
+  const g = G();
+  add(g, CY(1.15, 1.15, 0.04, 28), 'darkStone', 0, 0.02, 0);
+  add(g, TO(1.0, 0.045, 4, 28), 'brass', 0, 0.06, 0, PI / 2, 0, 0);
+  add(g, CO(0.34, 0.9, 3), 'brass', 0, 0.07, -0.35, -PI / 2, 0, 0).scale.set(1, 1, 0.12);
+  add(g, BX(0.16, 0.05, 0.7), 'brass', 0, 0.065, 0.42);
+  return g;
+}
+
+// Where a walk ends: a ring of glowing stones around a disc of light.
+export function exitMark() {
+  const g = G();
+  add(g, CY(1.25, 1.25, 0.05, 28), 'darkStone', 0, 0.025, 0);
+  add(g, TO(1.05, 0.07, 5, 28), 'paleStone', 0, 0.09, 0, PI / 2, 0, 0);
+  add(g, CY(0.95, 0.95, 0.02, 28), 'runeGlow', 0, 0.065, 0).userData.noShadow = true;
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * PI * 2 + 0.3, h = 0.5 + (k % 2) * 0.3;
+    add(g, BX(0.14, h, 0.14), 'runeGlow', Math.cos(a) * 1.05, 0.12 + h / 2, Math.sin(a) * 1.05, 0, a, 0).userData.noShadow = true;
+  }
   return g;
 }
 
@@ -1196,8 +1294,9 @@ export function gravestone(seed = 1) {
   const uv = geo.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 3, uv.getY(i) / 3);
   add(g, geo, 'mossRock', 0, 0, -0.4, 0, 0, (seed % 3 - 1) * 0.06);
-  add(g, BX(0.12, 0.9, 0.05), 'darkStone', 0, 2.1, -0.2);
-  add(g, BX(0.6, 0.12, 0.05), 'darkStone', 0, 2.3, -0.2);
+  // the cross stands a little proud of the stone's face (it used to sit just behind it)
+  add(g, BX(0.12, 0.9, 0.07), 'darkStone', 0, 2.1, -0.165);
+  add(g, BX(0.6, 0.12, 0.07), 'darkStone', 0, 2.3, -0.165);
   add(g, BX(1.4, 0.15, 2.4), 'dirt', 0, 0.07, 0.8);
   return g;
 }
@@ -1505,12 +1604,13 @@ function archOutline(outerHalf, halfW, springY, wallH = WALL_H) {
 function archTrim(g, halfW, springY, thick = 0.32) {
   const ring = new THREE.Shape();
   ring.absarc(0, 0, halfW + thick, 0, PI, false);
-  ring.lineTo(-halfW, 0);
-  ring.absarc(0, 0, halfW, PI, 0, true);
+  ring.lineTo(-halfW + LIP, 0);
+  ring.absarc(0, 0, halfW - LIP, PI, 0, true);
   ring.lineTo(halfW + thick, 0);
   add(g, extrudeWall(ring, WALL_T + 0.22), clipMat('darkStone'), 0, springY, 0);
-  add(g, BX(thick, springY, WALL_T + 0.22), clipMat('darkStone'), -halfW - thick / 2, springY / 2, 0);
-  add(g, BX(thick, springY, WALL_T + 0.22), clipMat('darkStone'), halfW + thick / 2, springY / 2, 0);
+  const jw = thick + LIP, jx = halfW + thick - jw / 2;
+  add(g, BX(jw, springY, WALL_T + 0.22), clipMat('darkStone'), -jx, springY / 2, 0);
+  add(g, BX(jw, springY, WALL_T + 0.22), clipMat('darkStone'), jx, springY / 2, 0);
   add(g, BX(0.7, 0.9, WALL_T + 0.34), clipMat('darkStone'), 0, springY + halfW + 0.2, 0);
 }
 
@@ -1603,7 +1703,7 @@ export function greatWindow(f) {
   hole.moveTo(-hw, y0); hole.lineTo(hw, y0); hole.lineTo(hw, ys); hole.absarc(0, ys, hw, 0, PI, false); hole.lineTo(-hw, y0);
   s.holes.push(hole);
   add(g, extrudeWall(s, WALL_T), clipMat(f), 0, 0, 0);
-  add(g, BX(hw * 2 + 0.8, 0.28, WALL_T + 0.6), clipMat('darkStone'), 0, y0 - 0.14, 0);
+  add(g, BX(hw * 2 + 0.8, 0.28, WALL_T + 0.6), clipMat('darkStone'), 0, y0 - 0.14 + LIP, 0);
   archTrim(g, hw, ys, 0.26);
   for (const x of [-0.95, 0, 0.95]) add(g, BX(0.12, ys + hw - y0, 0.16), clipMat('darkStone'), x, (y0 + ys + hw) / 2, 0);
   add(g, BX(hw * 2, 0.12, 0.16), clipMat('darkStone'), 0, 5.4, 0);
@@ -1628,7 +1728,8 @@ export function alcoveWall(f) {
   const back = -WALL_T / 2 - depth / 2;
   add(g, BX(hw * 2 + 0.6, ys + hw - y0 + 0.6, 0.4, 3), clipMat(f), 0, (y0 + ys + hw) / 2, -WALL_T / 2 - depth + 0.2);
   for (const sx of [-1, 1]) add(g, BX(0.3, ys + hw - y0 + 0.6, depth, 3), clipMat(f), sx * (hw + 0.15), (y0 + ys + hw) / 2, back);
-  add(g, BX(hw * 2 + 0.6, 0.3, depth + WALL_T, 3), clipMat('darkStone'), 0, y0 - 0.15, back + WALL_T / 2);
+  // the sill stands a little proud of the wall and the recess all round, and of the niche floor
+  add(g, BX(hw * 2 + 0.76, 0.36, depth + WALL_T + 0.24, 3), clipMat('darkStone'), 0, y0 - 0.18 + LIP, back + WALL_T / 2 + 0.04);
   add(g, BX(hw * 2 + 0.6, 0.3, depth, 3), clipMat(f), 0, ys + hw + 0.15, back);
   archTrim(g, hw, ys, 0.24);
   // statue and candles inside

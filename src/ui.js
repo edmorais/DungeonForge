@@ -93,7 +93,7 @@ export function buildUI(root, H) {
     h('button', { onclick: () => { closeMenu(); H.battleMap(); } }, 'Export battle map…', h('kbd', {}, '')),
     h('button', { onclick: () => { closeMenu(); H.topView(); } }, 'Top-down view', h('kbd', {}, 'T')),
     h('hr'),
-    h('button', { onclick: () => { closeMenu(); H.toggleQuality(); } }, refs.qLabel = h('span', {}, 'Graphics: high'), h('kbd', {}, '')),
+    h('button', { onclick: () => { closeMenu(); H.toggleQuality(); } }, refs.qLabel = h('span', {}, 'Graphics: auto'), h('kbd', {}, '')),
     h('button', { onclick: () => { closeMenu(); H.clearMap(); } }, 'Clear everything', h('kbd', {}, '')),
     h('hr'),
     h('button', { onclick: () => { closeMenu(); H.help(); } }, 'Controls', h('kbd', {}, '?')));
@@ -134,7 +134,8 @@ export function buildUI(root, H) {
     decor: 'Rugs sit under furniture. Wall pieces snap to sides.',
     loot: 'Chests open in walk mode. Values add to your treasure tally.',
     nature: 'Trees and stones for outdoor maps. Drag to scatter.',
-    creature: 'Foes watch you in walk mode. Press E near one to fight it.',
+    creature: 'In walk mode, creatures notice a hero 18 ft away and fight in turns, with dice.',
+    game: 'These turn a walk into a game: a start, an exit, keys for locked doors (under Doors) and traps.',
     stairs: 'Stairs climb toward their back; R turns them. Raise the squares they lead to with the Height tool (L), 3 ft per level.',
   };
 
@@ -220,8 +221,85 @@ export function buildUI(root, H) {
   const hurt = h('div', { class: 'hurt' });
   const cross = h('div', { class: 'cross' });
   const minimap = h('canvas', { class: 'minimap', width: '220', height: '220', 'aria-hidden': 'true' });
-  const walkhud = h('div', { class: 'walkhud' }, hurt, cross, prompt, purse, hpBar, walkName, minimap,
-    h('div', { class: 'walkhelp' }, 'WASD move · mouse look · Shift run · E or click to act · F torch · P peaceful · Esc to return'));
+  // the game: who the hero is, whose turn it is, the dice, and a short log
+  const heroLine = h('div', { class: 'heroline' }, '');
+  const banner = h('div', { class: 'banner', hidden: true });
+  const turnbar = h('div', { class: 'turnbar', hidden: true });
+  const dice = h('div', { class: 'dice', 'aria-live': 'polite' });
+  const gamelog = h('div', { class: 'gamelog' });
+  let rollTimer = 0, rollSpin = 0;
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // touch: a stick to move, buttons to act; dragging the view looks around
+  const nub = h('i', {});
+  const stick = h('div', { class: 'stick', 'aria-label': 'Move' }, nub);
+  let stickId = null;
+  const stickSet = (e) => {
+    const r = stick.getBoundingClientRect();
+    let x = (e.clientX - r.left - r.width / 2) / (r.width / 2), y = (e.clientY - r.top - r.height / 2) / (r.height / 2);
+    const m = Math.hypot(x, y);
+    if (m > 1) { x /= m; y /= m; }
+    nub.style.transform = `translate(${x * 34}px, ${y * 34}px)`;
+    H.walkStick(x, y);
+  };
+  const stickEnd = (e) => { if (e.pointerId !== stickId) return; stickId = null; nub.style.transform = ''; H.walkStick(0, 0); };
+  stick.addEventListener('pointerdown', (e) => { e.preventDefault(); stickId = e.pointerId; stick.setPointerCapture(e.pointerId); stickSet(e); });
+  stick.addEventListener('pointermove', (e) => { if (e.pointerId === stickId) stickSet(e); });
+  stick.addEventListener('pointerup', stickEnd);
+  stick.addEventListener('pointercancel', stickEnd);
+  const tbtn = (label, cls, fn) => h('button', { class: 'tbtn ' + cls, onpointerdown: (e) => { e.preventDefault(); fn(); } }, label);
+  const specialBtn = tbtn('Special', 'special', () => H.walkSpecial());
+  const endBtn = tbtn('End turn', 'end', () => H.walkEndTurn());
+  const touch = h('div', { class: 'touch' }, stick,
+    h('div', { class: 'tbtns' }, specialBtn, endBtn, tbtn('Jump', 'jump', () => H.walkJump()), tbtn('Act', 'act', () => H.walkAct())),
+    tbtn('✕', 'leave', () => H.walkExit()));
+  const touchOn = () => root.classList.add('touch-on');
+  if (matchMedia('(pointer: coarse)').matches) touchOn();
+  window.addEventListener('touchstart', touchOn, { passive: true, once: true });
+  const walkhud = h('div', { class: 'walkhud' }, hurt, cross, prompt, purse, hpBar, heroLine, walkName, minimap, banner, dice, gamelog, turnbar, touch,
+    h('div', { class: 'walkhelp' }, 'WASD move · mouse look · Shift run · Space jump · E or click to act · R special · F torch · Esc to return'));
+
+  // ---------- choose a hero ----------
+  const classBg = h('div', { class: 'modal-bg' });
+  function pickClass(classes, last, onPick) {
+    const close = () => classBg.classList.remove('open');
+    const card = (id, c) => h('button', { class: 'start hero' + (id === last ? ' on' : ''), onclick: () => { close(); onPick(id); } },
+      h('div', {}, h('b', {}, c.name), h('span', {}, c.blurb),
+        h('span', { class: 'hero-stats' }, `${c.hp} health · AC ${c.ac} · moves ${c.speed * 3} ft`),
+        h('span', { class: 'hero-stats' }, `${c.attack.name}: +${c.attack.bonus} to hit, ${c.attack.dmg}`),
+        h('span', {}, `${c.special.name} (${c.special.uses}): ${c.special.text}`)));
+    classBg.innerHTML = '';
+    classBg.append(h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Choose your hero' },
+      h('h2', {}, 'Choose your hero'),
+      h('p', { class: 'lede' }, 'Fights are played in turns. On your turn you move up to your speed and take one action; every attack is a d20 roll against armour class (AC). Find the exit to finish the run.'),
+      h('div', { class: 'starts heroes' }, Object.entries(classes).map(([id, c]) => card(id, c))),
+      h('div', { class: 'foot' },
+        h('button', { class: 'btn', onclick: () => { close(); onPick(null); } }, 'Just look around'),
+        h('button', { class: 'btn', onclick: close }, 'Cancel'))));
+    classBg.classList.add('open');
+  }
+
+  // ---------- end of a run ----------
+  const endBg = h('div', { class: 'modal-bg' });
+  function showSummary(s, { again, back }) {
+    const close = () => endBg.classList.remove('open');
+    const won = s.result === 'escaped';
+    const mins = `${Math.floor(s.seconds / 60)}:${String(s.seconds % 60).padStart(2, '0')}`;
+    endBg.innerHTML = '';
+    endBg.append(h('div', { class: 'modal summary' + (won ? ' won' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': 'End of the run' },
+      h('h2', {}, won ? `You escaped ${s.name}` : `You fell in ${s.name}`),
+      h('p', { class: 'lede' }, won ? `The ${s.cls.toLowerCase()} walks out with ${s.hp} of ${s.max} health.` : `The ${s.cls.toLowerCase()} was brought down by ${s.cause}.`),
+      h('div', { class: 'help-grid' },
+        row('Time', mins), row('Experience', `${s.xp.toLocaleString()} XP`),
+        row('Gold', `${s.gold.toLocaleString()} of ${s.goldTotal.toLocaleString()} gp`), row('Chests opened', `${s.chests} of ${s.chestsTotal}`),
+        row('Creatures defeated', `${s.defeated} of ${s.foesTotal}`), row('Fights and rounds', `${s.fights} and ${s.rounds}`),
+        row('Damage dealt', String(s.dealt)), row('Damage taken', String(s.taken)),
+        row('Critical hits', String(s.crits)), row('Potions drunk', String(s.potions)),
+        row('Traps sprung', String(s.trapsSprung)), row('Traps disarmed', String(s.trapsDisarmed))),
+      h('div', { class: 'foot' },
+        h('button', { class: 'btn', onclick: () => { close(); back(); } }, 'Back to the editor'),
+        h('button', { class: 'btn primary', onclick: () => { close(); again(); } }, 'Play again'))));
+    endBg.classList.add('open');
+  }
 
   // ---------- start modal ----------
   const startBg = h('div', { class: 'modal-bg' });
@@ -262,7 +340,9 @@ export function buildUI(root, H) {
       row('Move the view (no building)', 'H or Esc'), row('Select, move, turn, delete a placed piece', 'M, then click it'), row('Copy the selected piece', 'Ctrl+D'), row('Copy a piece', 'I, or Alt+click'), row('Deselect', 'Esc'), row('Undo / redo', 'Ctrl+Z / Ctrl+Shift+Z'), row('Cut walls down', 'C'),
       row('Height tool (Shift-click does the opposite)', 'L'), row('Grid', 'G'), row('Top-down view', 'T'), row('Overall light', '- and ='), row('Time of day', '[ and ] move an hour; P plays'),
       h('h3', {}, 'Walking'),
-      row('Enter walk mode', 'V'), row('Move / run', 'WASD / Shift'), row('Open doors, loot chests, fight', 'E or click'), row('Torch', 'F'), row('Peaceful (creatures do not attack)', 'P'), row('Back to the editor', 'Esc')),
+      row('Enter walk mode', 'V'), row('Move / run', 'WASD / Shift'), row('Jump (clears a trap, gains one 3 ft level)', 'Space'), row('Open doors, loot chests, attack', 'E or click'),
+      row('Your class’s special action', 'R'), row('End your turn in a fight', 'Enter or T'), row('Torch', 'F'), row('Peaceful (creatures do not attack)', 'P'), row('Back to the editor', 'Esc'),
+      row('Gamepad', 'Sticks move and look; A jump, X act, Y special, B end turn'), row('Touch', 'Stick moves, drag the view to look, buttons act')),
     h('div', { class: 'foot' }, h('span', {}, 'Your map saves itself in this browser as you work.'), h('button', { class: 'btn', onclick: () => helpBg.classList.remove('open') }, 'Close'))));
 
   // ---------- export / import dialog ----------
@@ -305,7 +385,7 @@ export function buildUI(root, H) {
 
   const loading = h('div', { class: 'loading' }, h('div', {}, 'Dungeon Forge', h('small', {}, 'Carving stone…')));
 
-  root.append(topbar, palette, status, compass, toasts, walkhud, coach, startBg, helpBg, ioBg, loading);
+  root.append(topbar, palette, status, compass, toasts, walkhud, coach, startBg, helpBg, ioBg, classBg, endBg, loading);
   showCat('floor');
   showDesc(null);
 
@@ -359,12 +439,63 @@ export function buildUI(root, H) {
       root.classList.toggle('walk-mode', on);
       walkhud.classList.toggle('on', on);
     },
-    setPrompt(text, kind = null) {
+    setPrompt(text, kind = null, sub = null) {
       cross.className = 'cross' + (kind ? ' ' + kind : '');
-      if (!text) { prompt.style.display = 'none'; return; }
+      if (!text) { prompt.style.display = 'none'; prompt._key = ''; return; }
       prompt.style.display = 'block';
-      prompt.innerHTML = `<span class="key">E</span>${text}`;
+      const key = text + '|' + (sub || '');
+      if (prompt._key === key) return; // unchanged since the last frame
+      prompt._key = key;
+      prompt.innerHTML = '';
+      prompt.append(h('span', { class: 'key' }, 'E'), text, sub ? h('small', {}, sub) : null);
     },
+    // the game's state for the HUD (see Game.pushHud)
+    setGame(g) {
+      heroLine.textContent = g.cls ? `${g.cls} · AC ${g.ac}` + (g.keys ? ` · ${g.keys} ${g.keys === 1 ? 'key' : 'keys'}` : '') : 'Looking around';
+      specialBtn.textContent = g.special ? `${g.special.name} (${g.special.uses})` : 'Special';
+      specialBtn.hidden = !g.special;
+      const c = g.combat;
+      walkhud.classList.toggle('fighting', !!c);
+      banner.hidden = turnbar.hidden = endBtn.hidden = !c;
+      if (!c) return;
+      const mine = c.turn === 'hero';
+      banner.className = 'banner' + (mine ? ' mine' : '');
+      banner.innerHTML = '';
+      banner.append(h('b', {}, mine ? 'Your turn' : c.turn === 'mon' ? `${c.who}’s turn` : '…'), h('span', {}, `Round ${c.round}`),
+        h('div', { class: 'order' }, c.order.map((o) => h('i', { class: o.current ? 'on' : '' }, o.name))));
+      turnbar.innerHTML = '';
+      if (mine) {
+        turnbar.append(h('span', { class: c.moveLeft ? '' : 'spent' }, `Move ${c.moveLeft * 3} ft`), h('span', { class: c.action ? '' : 'spent' }, c.action ? 'Action ready' : 'Action used'),
+          g.special ? h('span', { class: g.special.uses ? '' : 'spent' }, h('kbd', {}, 'R'), `${g.special.name} (${g.special.uses})`) : null,
+          h('span', {}, h('kbd', {}, 'Enter'), 'End turn'));
+      } else turnbar.append(h('span', { class: 'spent' }, 'Wait for your turn'));
+    },
+    // one roll of the dice: { title, die (the d20, or null), sub, outcome, tone, lines }
+    showRoll(r) {
+      clearTimeout(rollTimer);
+      clearInterval(rollSpin);
+      const die = h('div', { class: 'die' + (r.die === 20 ? ' crit' : r.die === 1 ? ' fumble' : '') }, r.die === null ? '✦' : String(r.die));
+      dice.className = 'dice on ' + (r.tone || '');
+      dice.innerHTML = '';
+      dice.append(die, h('div', { class: 'dice-text' }, h('b', {}, r.title), h('span', {}, r.sub), h('em', {}, r.outcome), r.lines.map((l) => h('span', { class: 'dmg' }, l))));
+      if (r.die !== null && !calm) {
+        // the die tumbles for a moment before it settles on the roll
+        let n = 0;
+        die.classList.add('rolling');
+        rollSpin = setInterval(() => {
+          die.textContent = String(1 + Math.floor(Math.random() * 20));
+          if (++n > 6) { clearInterval(rollSpin); die.textContent = String(r.die); die.classList.remove('rolling'); }
+        }, 45);
+      }
+      rollTimer = setTimeout(() => dice.classList.remove('on'), 3400);
+    },
+    log(msg, kind = '') {
+      gamelog.append(h('div', { class: kind }, msg));
+      while (gamelog.children.length > 5) gamelog.firstChild.remove();
+    },
+    clearGame() { gamelog.innerHTML = ''; dice.classList.remove('on'); hurt.classList.remove('on'); clearTimeout(rollTimer); clearInterval(rollSpin); },
+    pickClass,
+    showSummary,
     minimap,
     setHealth(hp, max, peaceful, wasHit = false) {
       hpFill.style.width = (100 * hp / max) + '%';
@@ -381,8 +512,8 @@ export function buildUI(root, H) {
     },
     hideStart() { startBg.classList.remove('open'); },
     showHelp() { helpBg.classList.toggle('open'); },
-    modalOpen() { return [startBg, helpBg, ioBg].some((m) => m.classList.contains('open')); },
-    closeModals() { helpBg.classList.remove('open'); ioBg.classList.remove('open'); },
+    modalOpen() { return [startBg, helpBg, ioBg, classBg, endBg].some((m) => m.classList.contains('open')); },
+    closeModals() { for (const m of [helpBg, ioBg, classBg, endBg]) m.classList.remove('open'); },
     openIO,
     closeIO() { ioBg.classList.remove('open'); },
     selectIO() { ioArea.focus(); ioArea.select(); },

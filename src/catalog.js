@@ -12,6 +12,7 @@ export const CATEGORIES = [
   { id: 'loot', name: 'Loot', glyph: '◆' },
   { id: 'nature', name: 'Wilds', glyph: '♣' },
   { id: 'creature', name: 'Creatures', glyph: '☠' },
+  { id: 'game', name: 'Adventure', glyph: '⚑' },
 ];
 
 const WARM = 0xff8f3a;
@@ -75,6 +76,7 @@ export const ITEMS = [
   { id: 'grandArch', name: 'Grand archway', cat: 'door', kind: 'edge', span: 2, framed: true, blocks: false, cap: 'jambs', jamb: 0.65, h: WALL_H, build: (f) => M.grandArch(f), desc: 'An open vaulted arch, 6 ft wide.' },
   { id: 'castleGate', name: 'Castle gate', cat: 'door', kind: 'edge', span: 3, door: true, framed: true, blocks: true, seeThrough: true, cap: 'jambs', jamb: 0.8, h: WALL_H, build: (f) => M.castleGate(f), desc: 'A 9 ft portcullis between buttresses.' },
   { id: 'palisadeGate', name: 'Palisade gate', cat: 'door', kind: 'edge', span: 2, door: true, framed: true, fixedFrame: 'log', blocks: true, cap: null, h: 10, build: () => M.palisadeGate(), desc: 'Log gates for a palisade fort, 6 ft wide.' },
+  { id: 'lockedDoor', name: 'Locked door', cat: 'door', kind: 'edge', door: true, locked: true, framed: true, blocks: true, cap: 'jambs', h: WALL_H, build: (f) => M.lockedDoor(f), desc: 'Needs a key in walk mode. A rogue can try to pick it.' },
   { id: 'secretDoor', name: 'Secret door', cat: 'door', kind: 'edge', door: true, secret: true, framed: true, blocks: true, cap: 'full', h: WALL_H, build: (f) => M.secretDoor(f), desc: 'Looks like the wall. Pivots open.' },
   { id: 'window', name: 'Barred window', cat: 'door', kind: 'edge', framed: true, blocks: true, seeThrough: true, cap: 'full', h: WALL_H, build: (f) => M.windowWall(f, false), desc: 'Lets daylight into the halls.' },
   { id: 'stainedWindow', name: 'Stained glass', cat: 'door', kind: 'edge', framed: true, blocks: true, cap: 'full', h: WALL_H, build: (f) => M.windowWall(f, true), desc: 'Coloured glass for chapels.' },
@@ -130,7 +132,7 @@ export const ITEMS = [
   { id: 'statue', name: 'Knight statue', cat: 'decor', kind: 'obj', layer: 'ground', size: [1, 1], block: true, build: () => M.statue(), desc: 'A stone guardian with a sword.' },
   { id: 'sarcophagus', name: 'Sarcophagus', cat: 'decor', kind: 'obj', layer: 'ground', size: [1, 2], block: true, build: () => M.sarcophagus(), desc: 'Sealed. Probably.' },
   { id: 'trapdoor', name: 'Trapdoor', cat: 'decor', kind: 'obj', layer: 'rug', size: [1, 1], build: () => M.trapdoor(), desc: 'Leads to a lower level.' },
-  { id: 'spikes', name: 'Spike trap', cat: 'decor', kind: 'obj', layer: 'rug', size: [1, 1], build: () => M.spikeTrap(), desc: 'Mind your step.' },
+  { id: 'spikes', name: 'Spike trap', cat: 'decor', kind: 'obj', layer: 'rug', size: [1, 1], trap: { dc: 12, dmg: '2d6', half: true, what: 'Spikes shoot up' }, build: () => M.spikeTrap(), desc: 'Spikes that shoot up when stepped on: 2d6, save for half. Jump over it.' },
   { id: 'cage', name: 'Iron cage', cat: 'decor', kind: 'obj', layer: 'ground', size: [1, 1], block: true, build: () => M.cage(), desc: 'Its last occupant is still inside.' },
   { id: 'bones', name: 'Bones', cat: 'decor', kind: 'obj', layer: 'item', size: [1, 1], build: () => M.bones(), desc: 'A skull and scattered remains.' },
   { id: 'cobweb', name: 'Cobweb', cat: 'decor', kind: 'obj', layer: 'ceiling', size: [1, 1], build: () => M.cobweb(), desc: 'Hangs in an upper corner.' },
@@ -179,6 +181,13 @@ export const ITEMS = [
   { id: 'spider', name: 'Giant spider', cat: 'creature', kind: 'obj', layer: 'ground', size: [2, 2], block: true, xp: 200, hp: 3, build: () => M.giantSpider(), desc: 'Eight legs, six red eyes. 200 XP.' },
   { id: 'ogre', name: 'Ogre', cat: 'creature', kind: 'obj', layer: 'ground', size: [2, 2], block: true, xp: 450, hp: 5, build: () => M.ogre(), desc: 'Ten feet of trouble with a club. 450 XP.' },
   { id: 'dragon', name: 'Young dragon', cat: 'creature', kind: 'obj', layer: 'ground', size: [3, 3], block: true, xp: 5900, hp: 8, build: () => M.youngDragon(), desc: 'A red wyrmling guarding its lair. 5,900 XP.' },
+
+  // ---------------- adventure: what turns a walk into a game ----------------
+  { id: 'startMark', name: 'Start', cat: 'game', kind: 'obj', layer: 'rug', size: [1, 1], start: true, build: () => M.startMark(), desc: 'Where a walk begins. R turns the way the walker faces.' },
+  { id: 'exitMark', name: 'Exit', cat: 'game', kind: 'obj', layer: 'rug', size: [1, 1], exit: true, light: { c: 0x8a6aff, i: 16, d: 16, p: [0, 1.2, 0], f: 0.15 }, build: () => M.exitMark(), desc: 'Reach it and press E to finish the run.' },
+  { id: 'key', name: 'Key', cat: 'game', kind: 'obj', layer: 'item', size: [1, 1], key: true, light: { c: 0xffd27a, i: 5, d: 8, p: [0, 0.8, 0], f: 0.1 }, build: () => M.keyItem(), desc: 'Opens one locked door. Sits on the floor or on a table.' },
+  { id: 'plate', name: 'Pressure plate', cat: 'game', kind: 'obj', layer: 'rug', size: [1, 1], trap: { dc: 13, dmg: '2d8', half: false, hidden: true, once: true, what: 'Darts fly from the walls' }, build: () => M.pressurePlate(), desc: 'A hidden dart trap: 2d8, save for none. The red mark shows only once it is noticed.' },
+  { id: 'fireRune', name: 'Fire rune', cat: 'game', kind: 'obj', layer: 'rug', size: [1, 1], trap: { dc: 13, dmg: '3d6', half: true, once: true, what: 'The rune bursts into flame' }, light: { c: 0xff7a2a, i: 10, d: 12, p: [0, 0.8, 0], f: 0.4 }, build: () => M.fireRune(), desc: 'A glowing glyph that burns once: 3d6, save for half.' },
 ];
 
 export const byId = Object.fromEntries(ITEMS.map((it) => [it.id, it]));

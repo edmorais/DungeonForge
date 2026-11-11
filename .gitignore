@@ -1,6 +1,7 @@
-node_modules
-dist
-dist-single
-src-tauri/target
-src-tauri/gen
-- older
+- older/
+node_modules/
+dist/
+dist-single/
+src-tauri/target/
+src-tauri/gen/
+.DS_Store

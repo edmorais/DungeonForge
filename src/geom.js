@@ -115,8 +115,8 @@ export function splitPrototype(root) {
 
 // A moving part (door leaf, chest lid, creature body…) is built from many small meshes that never
 // move relative to it. Merge those into one mesh per material, so each part costs a draw call or two
-// instead of dozens. Nested moving parts stay separate; so do see-through and mirrored meshes,
-// which must keep their own draw order and winding.
+// instead of dozens. Nested moving parts stay separate; so do see-through meshes, which must
+// keep their own draw order. Mirrored meshes join in with their triangles turned (cleanGeometry).
 const _inv = new THREE.Matrix4();
 const _rel = new THREE.Matrix4();
 function compactDynamic(node) {
@@ -131,7 +131,7 @@ function compactDynamic(node) {
       if (ch.userData.dyn) { keep.push(ch); continue; }
       if (ch.isMesh) {
         _rel.multiplyMatrices(_inv, ch.matrixWorld);
-        const ok = !Array.isArray(ch.material) && !ch.material.transparent && ch.visible && _rel.determinant() > 0 && ch.children.length === 0;
+        const ok = !Array.isArray(ch.material) && !ch.material.transparent && ch.visible && ch.children.length === 0;
         if (!ok) { keep.push(ch); continue; }
         const key = ch.material.uuid + (ch.userData.noShadow ? ':ns' : '');
         if (!byMat.has(key)) byMat.set(key, { material: ch.material, noShadow: !!ch.userData.noShadow, geos: [] });
@@ -170,6 +170,20 @@ function cleanGeometry(src, matrix) {
   if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
   if (!geo.attributes.normal) geo.computeVertexNormals();
   geo.morphAttributes = {};
+  // a mirrored part (the second leaf of a double door) comes out with its triangles facing
+  // inwards; swap two corners of each so it can share a mesh with the unmirrored parts
+  if (matrix.determinant() < 0) {
+    for (const a of Object.values(geo.attributes)) {
+      const arr = a.array, n = a.itemSize;
+      for (let v = 0; v + 2 < a.count; v += 3) {
+        for (let c = 0; c < n; c++) {
+          const p = (v + 1) * n + c, q = (v + 2) * n + c, t = arr[p];
+          arr[p] = arr[q];
+          arr[q] = t;
+        }
+      }
+    }
+  }
   return geo;
 }
 

@@ -118,7 +118,12 @@ export function sunkenCrypt(state) {
 
   // --- Crypt (a 26..39, b 0..11) ---
   F(26, 0, 39, 11, 'mossy');
-  D('h', 33, 12, 'ironDoor');
+  // the game: the crypt is locked, its key lies in the barracks, and the way out is in the vault
+  D('h', 33, 12, 'lockedDoor');
+  O('key', 10, 13);
+  O('plate', 33, 10);
+  O('fireRune', 20, 5);
+  O('exitMark', 37, 5);
   for (const a of [28, 31]) for (const b of [2, 7]) O('sarcophagus', a, b, 0);
   O('candles', 29, 5);
   O('spiritBrazier', 34, 5);
@@ -156,6 +161,7 @@ export function sunkenCrypt(state) {
   // outside the keep
   const ent = KEEP_I0 + KEEP_W / 2;
   for (let j = KEEP_J0 + KEEP_D; j < GRID_D; j++) for (const di of [-1, 0]) state.setFloor(ent + di, j, 'cobble');
+  state.addObject('startMark', ent - 1, KEEP_J0 + KEEP_D + 3, 0);
   state.addObject('lanternPost', ent - 3, KEEP_J0 + KEEP_D + 1, 0);
   state.addObject('lanternPost', ent + 2, KEEP_J0 + KEEP_D + 1, 2);
   state.addObject('grave', KEEP_I0 - 4, KEEP_J0 + 4, 0);

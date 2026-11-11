@@ -795,13 +795,16 @@ function buildTabletop() {
   cutHoles(mat('tableWood'));
   const g = G();
   g.name = 'tabletop';
-  const top = -0.06;
+  // The battle mat lies on the table and its top sits just under the map's floors. The table top
+  // is a full mat thickness lower: two surfaces a hair apart flicker when seen from far away.
+  const matTop = -0.04, matH = 0.42;
+  const top = matTop - matH;
   // table, battle mat, legs, room
   const table = add(g, BX(TABLE_W, 8, TABLE_D, 48), 'tableWood', 0, top - 4, 0);
   table.receiveShadow = true;
   add(g, BX(TABLE_W + 6, 3, TABLE_D + 6, 48), 'darkWood', 0, top - 9, 0).receiveShadow = true;
   const matW = GRID_W * CELL + 24, matD = GRID_D * CELL + 24;
-  const bm = add(g, BX(matW, 0.4, matD, 6), 'battleMat', 0, top - 0.18, 0);
+  const bm = add(g, BX(matW, matH, matD, 6), 'battleMat', 0, matTop - matH / 2, 0);
   bm.receiveShadow = true;
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, BX(16, TABLE_H, 16, 20), 'darkWood', sx * (TABLE_W / 2 - 18), top - 8 - TABLE_H / 2, sz * (TABLE_D / 2 - 18));
   const floor = add(g, new THREE.PlaneGeometry(5000, 5000), 'roomFloor', 0, top - 8 - TABLE_H, 0, -Math.PI / 2);
@@ -843,8 +846,12 @@ function buildTabletop() {
   props.add(pencil);
   // rule book
   const book = G();
-  add(book, BX(110, 14, 150), 'redCloth', 0, 7, 0);
-  add(book, BX(104, 12, 146), 'parchment', 3, 7, 0);
+  // two covers and a spine around a block of pages set in from the three open edges, so no
+  // page face lies in the same plane as a cover face (that made the fore-edge flicker)
+  add(book, BX(110, 1.2, 150), 'redCloth', 0, 0.6, 0);
+  add(book, BX(110, 1.2, 150), 'redCloth', 0, 13.4, 0);
+  add(book, BX(3, 11.6, 150), 'redCloth', -53.5, 7, 0);
+  add(book, BX(104, 11.6, 145), 'parchment', 0, 7, 0);
   add(book, BX(30, 0.5, 60), 'gold', 0, 14.3, -20);
   book.rotation.y = -0.2;
   book.position.set(-160, y0, -70);
@@ -854,7 +861,7 @@ function buildTabletop() {
   add(mug, LA([[0, 0], [18, 0], [19, 2], [19, 40], [17.5, 40], [17.5, 3], [0, 3]], 24), 'ceramic', 0, 0, 0);
   add(mug, CY(17.4, 17.4, 0.4, 24), 'coffee', 0, 33, 0);
   add(mug, TO(10, 2.8, 8, 16, Math.PI * 1.2), 'ceramic', 21, 20, 0, 0, 0, -Math.PI * 0.6);
-  mug.position.set(-168, y0, 20);
+  mug.position.set(-166, y0, 34); // clear of the book's near edge, which runs at a slant
   props.add(mug);
   // candle on a dish
   const candle = G();

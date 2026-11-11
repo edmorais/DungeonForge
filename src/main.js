@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FrameGate, SHADOW_ONLY_LAYER } from './perf.js'; // first: patches shader chunks before any material compiles
+import { FrameGate, AutoScale, SHADOW_ONLY_LAYER } from './perf.js'; // first: patches shader chunks before any material compiles
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -13,6 +13,8 @@ import { Environment, LANDSCAPES } from './environment.js';
 import { LightPool } from './lights.js';
 import { Editor } from './editor.js';
 import { Walker } from './walk.js';
+import { Game } from './game.js';
+import { CLASSES } from './rules.js';
 import { buildUI } from './ui.js';
 import { renderThumbnails } from './thumbs.js';
 import { Ambience } from './audio.js';
@@ -62,7 +64,10 @@ function markShadows() {
   env.sun.shadow.needsUpdate = true;
   for (const L of pool.lights) if (L.castShadow) L.shadow.needsUpdate = true;
 }
-let quality = 'high';
+let quality = 'high'; // the preset in use: lights, shadows, bloom
+let qualityMode = 'auto'; // what the menu says: auto, high or low
+let weakDevice = false;
+const auto = new AutoScale(); // resolution steps used while the menu says auto
 let playing = false;
 let cutIndex = 0;
 let gridOn = true;
@@ -86,14 +91,26 @@ editor.onSelect = (ob) => {
   else if (editor.tool === 'select') ui.setTip('Click a placed piece · drag to move · R turns · Delete removes');
 };
 
+// the rules of the game played in walk mode; it talks to the interface through these
+const game = new Game({
+  state, world,
+  out: {
+    toast: (m, k) => ui.toast(m, k),
+    roll: (r) => { ui.showRoll(r); if (r.die !== null) audio.dice(); },
+    log: (m, k) => ui.log(m, k),
+    hud: (g) => ui.setGame(g),
+    health: (hp, max, peaceful, hit) => ui.setHealth(hp, max, peaceful, hit),
+    purse: (g, xp) => ui.setPurse(g, xp),
+    sound: (kind, arg) => audio[kind]?.(arg),
+    end: (s) => endRun(s),
+  },
+});
 const walker = new Walker({
-  camera, dom: canvas, state, world, env,
-  onPrompt: (t, kind) => ui.setPrompt(t, kind),
+  camera, dom: canvas, state, world, env, game,
+  onPrompt: (t, kind, sub) => ui.setPrompt(t, kind, sub),
   onToast: (m, k) => ui.toast(m, k),
-  onGold: (g, xp = 0) => ui.setPurse(g, xp),
   onExit: () => exitWalk(),
   onSound: (kind, arg) => audio[kind]?.(arg),
-  onHealth: (hp, max, peaceful, hit) => ui.setHealth(hp, max, peaceful, hit),
 });
 const audio = new Ambience();
 scene.add(walker.handLight);
@@ -166,7 +183,14 @@ Object.assign(H, {
   toggleGrid: () => { gridOn = !gridOn; editor.setGridVisible(gridOn); ui.setGrid(gridOn); },
   undo: () => { if (state.undo()) ui.toast('Undone.'); },
   redo: () => { if (state.redo()) ui.toast('Redone.'); },
-  walk: () => enterWalk(),
+  walk: () => beginWalk(),
+  // touch controls in walk mode
+  walkStick: (x, y) => walker.setStick(x, y),
+  walkAct: () => walker.act(),
+  walkJump: () => walker.jump(),
+  walkSpecial: () => walker.special(),
+  walkEndTurn: () => walker.endTurn(),
+  walkExit: () => walker.exit(),
   select: (id) => selectItem(id),
   setTool,
   lastFloor: () => editor.lastFloor,
@@ -184,9 +208,12 @@ Object.assign(H, {
   battleMap: () => battleMap(true),
   topView: () => toggleTopView(),
   clearMap: () => { state.checkpoint(); state.clearAll(); state.emit(); ui.toast('Map cleared. Ctrl+Z brings it back.'); },
-  toggleQuality: () => setQuality(quality === 'high' ? 'low' : 'high'),
+  toggleQuality: () => {
+    setQualityMode({ auto: 'high', high: 'low', low: 'auto' }[qualityMode]);
+    ui.toast({ auto: 'Graphics: auto. Sharpness follows the frame rate.', high: 'Graphics: high, at full sharpness.', low: 'Graphics: low. Fewer lights and shadows.' }[qualityMode]);
+  },
   help: () => ui.showHelp(),
-  start: (kind) => { startedAt = performance.now(); startDungeon(kind); ui.showCoach(); },
+  start: (kind) => { startedAt = performance.now(); auto.reset(); startDungeon(kind); ui.showCoach(); },
   generate: () => {
     state.checkpoint();
     const rooms = randomKeep(state);
@@ -240,22 +267,75 @@ function frameCamera(view = null) {
 }
 
 // ---------- quality ----------
+function fullPixelRatio() { return quality === 'high' ? Math.min(window.devicePixelRatio, 1.75) : 1; }
+// resolution and bloom for the current preset and, in auto, the current step
+function applyScale() {
+  const full = fullPixelRatio();
+  const s = qualityMode === 'auto' ? auto.scale : 1;
+  renderer.setPixelRatio(Math.max(Math.min(0.6, full), full * s));
+  bloom.enabled = quality === 'high' && s > 0.65;
+  onResize();
+}
 function setQuality(q) {
+  const changed = q !== quality;
   quality = q;
   const high = q === 'high';
-  renderer.setPixelRatio(high ? Math.min(window.devicePixelRatio, 1.75) : 1);
-  env.sun.shadow.mapSize.set(high ? 4096 : 2048, high ? 4096 : 2048);
-  env.sun.shadow.map?.dispose();
-  env.sun.shadow.map = null;
-  bloom.enabled = high;
-  pool.build(high ? 18 : 8, high ? 4 : 1);
-  onResize();
-  world.needsShadow = true;
-  ui.setQuality(q);
+  if (changed) {
+    env.sun.shadow.mapSize.set(high ? 4096 : 2048, high ? 4096 : 2048);
+    env.sun.shadow.map?.dispose();
+    env.sun.shadow.map = null;
+    pool.build(high ? 18 : 8, high ? 4 : 1);
+    world.needsShadow = true;
+  }
+  auto.level = 0;
+  auto.reset();
+  applyScale();
+  ui.setQuality(qualityMode === 'auto' ? 'auto' : q);
+}
+function setQualityMode(m) {
+  qualityMode = m;
+  setQuality(m === 'auto' ? (weakDevice ? 'low' : 'high') : m);
+}
+// In auto: follow the frame rate with the resolution; if even the lowest step is slow, either
+// drop to the low preset (very slow) or give the resolution back (it was not the cause).
+function watchFrameRate(frameMs) {
+  if (qualityMode !== 'auto' || !startedAt || performance.now() - startedAt < 2500 || !window.__thumbsDone) return;
+  if (auto.tick(frameMs, gate.target)) { applyScale(); return; }
+  if (auto.stuck < 3) return;
+  if (auto.avg > 1000 / 24 && quality === 'high') {
+    const fps = Math.round(1000 / auto.avg);
+    setQuality('low');
+    ui.toast(`Drawing at ${fps} frames a second, so Graphics now uses fewer lights. Choose Graphics: high in the menu to undo.`);
+  } else if (auto.gainedNothing) {
+    auto.level = 0;
+    auto.reset();
+    auto.paused = true; // until the next map, walk or setting change
+    applyScale();
+  } else auto.stuck = 0;
 }
 
 // ---------- walk mode ----------
-function enterWalk() {
+// A map with creatures, traps, keys, locks or an exit is a game: ask which hero walks it.
+// Any other map is simply walked through.
+let lastClass = null;
+try { lastClass = localStorage.getItem('dungeon-forge:class'); } catch { /* no storage */ }
+function beginWalk() {
+  if (mode === 'walk' || ui.modalOpen()) return;
+  const d = state.data;
+  const playable = d.objects.some((o) => { const it = byId[o.t]; return it.cat === 'creature' || it.trap || it.key || it.exit; })
+    || Object.values(d.edges).some((e) => byId[e.t]?.locked);
+  if (!playable) { enterWalk(null); return; }
+  ui.pickClass(CLASSES, lastClass, (id) => {
+    if (id) { lastClass = id; try { localStorage.setItem('dungeon-forge:class', id); } catch { /* no storage */ } }
+    enterWalk(id);
+  });
+}
+// the run is over (the hero left by the exit, or fell): back to the editor, with a summary on top
+function endRun(s) {
+  walker.exit();
+  ui.showSummary(s, { again: () => enterWalk(s.classId), back: () => {} });
+}
+function enterWalk(classId = null) {
   if (mode === 'walk') return;
   mode = 'walk';
   editorCam = { pos: camera.position.clone(), target: editor.controls.target.clone() };
@@ -265,8 +345,11 @@ function enterWalk() {
   env.setWorkLight(0);
   ui.walkMode(true);
   applyViewOffset();
-  walker.enter();
-  ui.toast('Click to look around. Press Esc to return to the editor.');
+  auto.reset(); // a first-person view costs differently; learn again from the current step
+  ui.clearGame();
+  walker.enter(classId);
+  const hasExit = state.data.objects.some((o) => byId[o.t].exit);
+  ui.toast(classId ? (hasExit ? 'Find the exit. Esc returns to the editor.' : 'This map has no exit piece, so the run ends only when you leave with Esc.') : 'Click to look around. Press Esc to return to the editor.');
 }
 function exitWalk() {
   if (mode !== 'walk') return;
@@ -283,6 +366,7 @@ function exitWalk() {
   if (editorCam) { camera.position.copy(editorCam.pos); editor.controls.target.copy(editorCam.target); camera.up.set(0, 1, 0); camera.lookAt(editorCam.target); }
   editor.controls.update();
   world.needsShadow = true;
+  auto.reset();
 }
 
 // ---------- files ----------
@@ -377,8 +461,12 @@ function dataUrlToBlob(url) {
 function screenshot() {
   const ov = editor.overlay.visible;
   editor.overlay.visible = false;
+  // a picture is always taken at full sharpness, whatever step auto graphics is on
+  const pr = renderer.getPixelRatio(), full = fullPixelRatio(), bloomOn = bloom.enabled;
+  if (pr < full) { renderer.setPixelRatio(full); bloom.enabled = quality === 'high'; onResize(); }
   composer.render();
   const url = canvas.toDataURL('image/png');
+  if (pr < full) { renderer.setPixelRatio(pr); bloom.enabled = bloomOn; onResize(); }
   editor.overlay.visible = ov;
   ui.openIO({
     title: 'Picture of your dungeon',
@@ -524,7 +612,7 @@ window.addEventListener('keydown', (e) => {
     case 'KeyC': H.cycleCut(); break;
     case 'KeyT': toggleTopView(); break;
     case 'KeyG': H.toggleGrid(); break;
-    case 'KeyV': enterWalk(); break;
+    case 'KeyV': beginWalk(); break;
     case 'KeyN': ui.showStart(); break;
     case 'KeyP': H.togglePlay(); break;
     case 'Minus': H.nudgeLight(-0.1); break;
@@ -591,10 +679,17 @@ function drawMinimap() {
   for (const o of d.objects) {
     if (Math.abs(o.i - ci) > reach || Math.abs(o.j - cj) > reach) continue;
     const it = byId[o.t];
-    if (it.layer !== 'ground') continue;
+    if (it.exit) { g.fillStyle = '#a98cff'; g.beginPath(); g.arc(toX(o.i) + sq / 2, toZ(o.j) + sq / 2, sq * 0.38, 0, Math.PI * 2); g.fill(); continue; }
+    if (it.layer !== 'ground' || it.cat === 'creature') continue; // creatures are drawn where they stand now, below
     g.fillStyle = it.cat === 'loot' ? (walker.world.openChests.has(o.id) ? '#6a5a3a' : '#e2c07a') : it.light ? '#ff9a4a' : '#7a7266';
     const [w, dd] = o.r % 2 ? [it.size[1], it.size[0]] : it.size;
     g.fillRect(toX(o.i) + 2, toZ(o.j) + 2, w * sq - 4, dd * sq - 4);
+  }
+  // creatures in the fight, where they stand now
+  g.fillStyle = '#ef6a5a';
+  for (const m of game.mons.values()) {
+    if (m.dead || !m.active || Math.abs(m.i - ci) > reach || Math.abs(m.j - cj) > reach) continue;
+    g.beginPath(); g.arc(toX(m.i) + (m.w * sq) / 2, toZ(m.j) + (m.d * sq) / 2, m.w * sq * 0.36, 0, Math.PI * 2); g.fill();
   }
   g.lineCap = 'round';
   for (const k in d.edges) {
@@ -657,9 +752,12 @@ let loopFailures = 0;
 const _camDir = new THREE.Vector3();
 const ORIGIN = new THREE.Vector3();
 const gate = new FrameGate();
+let lastDrawn = 0;
 function frame(t) {
   requestAnimationFrame(frame);
   if (!gate.pass(t)) return; // fast displays: draw every other frame (see perf.js)
+  if (lastDrawn) watchFrameRate(t - lastDrawn);
+  lastDrawn = t;
   try {
     step();
     loopFailures = 0;
@@ -670,25 +768,11 @@ function frame(t) {
     if (loopFailures === 3 && quality === 'high') setQuality('low');
   }
 }
-// If the first seconds of drawing are slow, drop to the low graphics preset once.
-const fpsProbe = { t: 0, frames: 0, done: false };
-function watchFrameRate(dt) {
-  if (fpsProbe.done || mode !== 'edit' || document.hidden || !window.__thumbsDone) return;
-  fpsProbe.t += dt; fpsProbe.frames++;
-  if (fpsProbe.t < 4) return;
-  fpsProbe.done = true;
-  const fps = fpsProbe.frames / fpsProbe.t;
-  if (fps < 24 && quality === 'high') {
-    setQuality('low');
-    ui.toast(`Drawing at ${Math.round(fps)} frames a second, so Graphics is now low. Switch back in the menu.`);
-  }
-}
 function step() {
   const now = performance.now();
   const dt = Math.min((now - lastT) / 1000, 0.1);
   lastT = now;
   elapsed += dt;
-  if (startedAt && now - startedAt > 2500) watchFrameRate(dt);
   if (playing) {
     const t = (state.data.time + dt * (24 / 120)) % 24; // a day every two minutes
     state.setSetting('time', t);
@@ -696,6 +780,11 @@ function step() {
   if (mode === 'edit') {
     editor.update(dt);
     focus.copy(editor.controls.target);
+    // Depth precision falls with the square of the distance and rises with the near plane. Seen
+    // from far away, a near plane at 2 % of the viewing distance keeps thin layers (trim on a
+    // chest, a floor over the ground) from flickering; up close it is the usual 0.5 ft.
+    const near = Math.max(0.5, Math.min(8, camera.position.distanceTo(focus) * 0.02));
+    if (Math.abs(near - camera.near) > camera.near * 0.05) { camera.near = near; camera.updateProjectionMatrix(); }
     const dir = camera.getWorldDirection(_camDir);
     ui.setCompass(Math.atan2(dir.x, -dir.z) * -1);
   } else {
@@ -705,6 +794,7 @@ function step() {
     if (mapTimer <= 0) { mapTimer = 0.1; drawMinimap(); }
   }
   world.update(dt, elapsed);
+  if (world.lightsMoved) { world.lightsMoved = false; pool.invalidate(); } // a creature's glow walked, or a light went out
   editor.setGridStrength(env.dayFactor ?? 1);
   const night = env.nightFactor ?? 0;
   bloom.threshold = 1.0 + (1 - night) * 4.5;
@@ -810,8 +900,8 @@ async function boot() {
   // phones and very small machines start low; everyone else is checked by the frame-rate probe
   let weak = (navigator.hardwareConcurrency || 8) <= 2 || /Mobi|Android/i.test(navigator.userAgent);
   try { weak = weak || gpuIsLimited(); } catch { /* keep the guess */ }
-  if (weak) setQuality('low');
-  onResize();
+  weakDevice = weak;
+  setQualityMode('auto');
   startDungeon('blank');
   refreshStats();
   ui.setCut('full');
@@ -820,6 +910,6 @@ async function boot() {
   ui.showStart();
   if (new URLSearchParams(location.search).has('nothumbs')) window.__thumbsDone = true;
   else renderThumbnails(112, (id, url) => ui.setThumb(id, url)).then(() => { window.__thumbsDone = true; });
-  window.__df = { composer, bloom, step, toScreen: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return [Math.round((v.x + 1) / 2 * window.innerWidth), Math.round((1 - v.y) / 2 * window.innerHeight)]; }, perf, state, world, env, editor, walker, camera, renderer, scene, pool, H, ui, startDungeon, enterWalk, exitWalk, LANDSCAPES };
+  window.__df = { composer, bloom, step, toScreen: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return [Math.round((v.x + 1) / 2 * window.innerWidth), Math.round((1 - v.y) / 2 * window.innerHeight)]; }, perf, auto, gate, watchFrameRate, game, beginWalk, state, world, env, editor, walker, camera, renderer, scene, pool, H, ui, startDungeon, enterWalk, exitWalk, LANDSCAPES };
 }
 boot();

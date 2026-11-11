@@ -81,7 +81,9 @@ The first build compiles a few hundred Rust crates and takes several minutes; la
 | `src/lights.js` | A fixed pool of point lights (4 with shadows) reassigned to the nearest flames, so shaders never recompile |
 | `src/environment.js` | Sky, sun and moon, landscapes, terrain, scattered vegetation and weather particles |
 | `src/editor.js` | Camera, grid, ghost previews and the editing tools |
-| `src/walk.js` | First-person movement, collision and interaction |
+| `src/walk.js` | First-person movement, jumping, collision, what the walker aims at, and input (keyboard and mouse, gamepad, touch) |
+| `src/rules.js` | Tabletop rules as plain data and dice: the four hero classes, creature stats, attack and saving rolls. Change the balance here |
+| `src/game.js` | The game played in walk mode: noticing, initiative, turns, creature path-finding and attacks, traps, keys, the exit and the end-of-run summary |
 | `src/samples.js` | The sample maps, the random keep generator and themed room furnishing |
 | `src/audio.js` | Procedural ambience and sound effects (Web Audio) |
 | `src/desktop.js` | Native Save dialog when running as the desktop app |
@@ -90,14 +92,16 @@ The first build compiles a few hundred Rust crates and takes several minutes; la
 
 ### Performance notes
 
-- Static geometry is merged per material and drawn with `InstancedMesh`. Moving parts (doors, lids, creatures) merge their rigid pieces per material too, and all flames of one kind draw as a single instanced batch. The crypt sample went from about 660 to 360 draw calls.
+- Static geometry is merged per material and drawn with `InstancedMesh`. Moving parts (doors, lids, creatures) merge their rigid pieces per material too, and all flames of one colour draw as a single instanced batch (every flame shares two cone geometries and takes its size from the mesh scale). Mirrored parts, such as the second leaf of a double door, merge too, with their triangles turned. The crypt sample went from about 660 to 305 draw calls.
 - Shadow maps re-render per light and only when that light's view changes: the sun when the hour or the landscape changes (at most 30 times a second while the day plays), a pooled torch light only when it moves to another flame, and every light after an edit or a door moving.
 - Plants and rocks cast the sun's shadow from a copy cut into patches of land on a layer only the sun's shadow camera sees. The shadow map covers only the site, so it skips nearly all of them (the crypt's shadow pass fell from about 3.2 million triangles to under 0.3 million). The camera still draws them as one batch per part.
 - Point lights are skipped per pixel beyond their range (`src/perf.js` patches three.js's light loop with a branch; the image is unchanged because those lights contribute exactly zero there).
 - The sky (scattering and clouds) draws after everything opaque, and the terrain, lava and table after the dungeon and plants, so the depth test rejects hidden pixels before they are shaded.
 - On 120 Hz and faster displays the app draws every second (or fourth) frame, giving 60 to 80 evenly paced frames a second. Displays up to 100 Hz draw every frame.
 - Point-light shadows render dungeon geometry only. The landscape is excluded through render layers.
-- **Graphics: low** (menu) uses 8 lights, 1 shadowed light, no bloom and pixel ratio 1. It turns on automatically on phones, on machines with 4 or fewer CPU cores, on GPUs with small shader limits, when a shader fails to compile, or when the first seconds draw below 24 frames a second.
+- **Graphics: auto** (menu, the default) changes the drawing resolution to follow the frame rate (`AutoScale` in `src/perf.js`). Two slow seconds in a row step it down (100, 85, 72, 60, 50 % of full, bloom off below 65 %); a calm stretch tries one step back up, and waits twice as long next time if that step was too much. If the lowest step is still below 24 frames a second it switches to the low preset; if the lower resolution gained nothing (the CPU or a capped display is the limit) it returns to full resolution and stops trying until the next map or walk. *Download picture* always draws at full resolution.
+- **Graphics: high** keeps full resolution and never changes by itself. **Graphics: low** uses 8 lights, 1 shadowed light, no bloom and pixel ratio 1. Auto starts from the low preset on phones, on machines with 2 or fewer CPU cores and on GPUs with small shader limits, and any setting falls back to it when a shader fails to compile.
+- Measured on an RTX 3060 laptop GPU at 1024 × 768: a frame of the crypt costs about 3 ms, nearly all of it CPU time submitting draw calls; game logic is under 0.3 ms. The GPU cost is per pixel, about 0.5 ms per megapixel in the editor and two to three times that in first person, which is what an integrated GPU runs out of first. It was not measured on an integrated GPU.
 - Drawing errors and GPU resets show a visible message instead of a frozen canvas.
 
 ### Map file format
