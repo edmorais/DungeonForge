@@ -10,7 +10,7 @@ import { CLASSES, MONSTERS, FALLBACK_MONSTER, POTION, MIMIC_BITE, d20, rollDice,
 
 const NOTICE = 4; // squares (20 ft) at which a creature notices the hero
 // how tall each creature stands (ft), for aiming effects and labels at it
-const TALL = { goblin: 3.2, skeleton: 5.6, cultist: 5.6, orc: 5.9, wraith: 6.2, ooze: 2.8, spider: 2.8, ogre: 9, dragon: 9 };
+const TALL = { goblin: 3.2, skeleton: 5.6, cultist: 5.6, orc: 5.9, wraith: 6.2, ooze: 2.8, spider: 2.8, ogre: 9, dragon: 11.5 };
 const BOLT = { cultist: 0x6aff8a, spider: 0xb8e04a, ogre: 0x8a8478 }; // what creatures throw
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);

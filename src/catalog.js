@@ -195,7 +195,7 @@ export const ITEMS = [
 // on. [x, y, z] (or one number) scales the model; a piece's surface height and light follow.
 const FIT = {
   altar: [1.5, 1.1, 1.4], fountain: [1.5, 1.25, 1.5], tent: [1.6, 1.4, 1.6],
-  bedroll: [1.35, 1.2, 1.5], sarcophagus: [1.4, 1.15, 1.5], hoard: [1.6, 1.4, 1.6], spider: 1.35, dragon: 1.5, ooze: 1.55,
+  bedroll: [1.35, 1.2, 1.5], sarcophagus: [1.4, 1.15, 1.5], hoard: [1.6, 1.4, 1.6], spider: 1.35, ooze: 1.55,
   spikes: [1.65, 1, 1.65], trapdoor: [1.6, 1, 1.6], plate: [1.65, 1, 1.65], fireRune: [1.7, 1, 1.7], startMark: [1.6, 1, 1.6], exitMark: [1.6, 1.3, 1.6],
   weaponRack: [1.5, 1, 1], banner: [1.4, 1.15, 1], blueBanner: [1.4, 1.15, 1], shield: [1.3, 1.3, 1],
   well: 1.3, cage: [1.25, 1.1, 1.25], pillar: [1.4, 1, 1.4], statue: 1.2,

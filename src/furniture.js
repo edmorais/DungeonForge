@@ -18,7 +18,7 @@ function leg(g, x, z, h, m = 'darkWood', r = 0.11) {
 export function table(w = 2) {
   const g = G();
   const L = w * CELL - 1.4, D = 3.4, y = 2.6;
-  add(g, BX(L, 0.2, D), 'planks', 0, y, 0);
+  add(g, BX(L, 0.2, D), 'wood', 0, y, 0);
   for (const s of [-1, 1]) add(g, BX(0.3, 0.24, D + 0.06), 'darkWood', s * (L / 2 - 0.12), y, 0);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) leg(g, sx * (L / 2 - 0.5), sz * (D / 2 - 0.4), y - 0.1, 'darkWood', 0.14);
   for (const sz of [-1, 1]) add(g, BX(L - 1.3, 0.34, 0.1), 'darkWood', 0, y - 0.3, sz * (D / 2 - 0.4));
@@ -66,7 +66,7 @@ export function chair() {
 export function bench() {
   const g = G();
   const L = 2 * CELL - 2.4;
-  add(g, BX(L, 0.2, 1.3), 'planks', 0, 1.6, 0);
+  add(g, BX(L, 0.2, 1.3), 'wood', 0, 1.6, 0);
   for (const s of [-1, 1]) {
     const x = s * (L / 2 - 0.9);
     add(g, BX(0.22, 1.4, 1.1), 'darkWood', x, 0.8, 0);

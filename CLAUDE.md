@@ -44,7 +44,8 @@ There is no test runner, linter or type checker. Verify with `pnpm build` (must 
 - Materials are shared and cached (`mat(name)`); clone before per-instance changes.
 - Two faces of different materials in the same plane flicker (z-fighting). Never end a trim, sill or inset flush with the surface it sits on: overlap or stand proud by at least 0.03 ft (`LIP` in `models.js`). In the editor the camera's near plane follows the viewing distance (`main.js step`), which keeps gaps that small stable when zoomed out; it does nothing for a gap of zero.
 - Autosave key `dungeon-forge:autosave:v1` in localStorage; old maps without `heights` must keep loading.
-- Keep the Move tool the default so touch drags never build.
+- Keep the Move tool the default so touch drags never build. The list of pieces (categories, search, recent) shows only while the Place tool is active (`.palette.placing`); with any other tool the palette is just its toolbar and hint.
+- Heavier picture effects go behind `qualityMode === 'high'` in `main.js applyScale` (today: `ao` and `grade`), never behind the `quality` preset, which auto also uses.
 - Squares are 5 ft wide and a height level is 2.5 ft: use `CELL` for anything across the floor and `LEVEL` for anything up or down, never one for the other. Models are real-sized; `FIT` in `catalog.js` re-sizes the ones first drawn for 3 ft squares. Maps saved before this change are not converted.
 - The interface is parchment and ink: the last block of `style.css` redefines the colour variables for paper, and `.walkhud` restores the light-on-dark values because the play HUD sits over the 3D view. New editor UI must read on paper; new HUD parts go inside `.walkhud`.
 - Wall and floor textures are painted in the last block of `textures.js` (`paintStone`: flat base, dark wash, dry-brushed lit edge) and override the plainer ones above it.

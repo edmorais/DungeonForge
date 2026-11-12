@@ -255,6 +255,8 @@ function selectItem(id) {
   warnPaused();
   editor.select(id);
   ui.setTool('place');
+  applyViewOffset();
+  camera.updateProjectionMatrix();
   ui.setSelected(id);
   const it = byId[id];
   const tips = {
@@ -269,6 +271,8 @@ function setTool(t) {
   if (t !== 'view' && t !== 'pick') warnPaused();
   editor.setTool(t);
   ui.setTool(t);
+  applyViewOffset();
+  camera.updateProjectionMatrix();
   ui.setTip({
     room: 'Drag a rectangle. It uses your last floor and wall choices.',
     erase: 'Click to remove the top piece or a wall · drag to clear an area',
@@ -865,7 +869,7 @@ function applyViewOffset() {
   // keep the scene centred in the space right of the palette while editing
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  const pal = mode === 'edit' && w > 760 ? 364 : 0;
+  const pal = mode === 'edit' && w > 760 && editor.tool === 'place' ? 364 : 0; // the palette is open only while placing
   if (pal) camera.setViewOffset(w, h, -pal / 2, 0, w, h);
   else camera.clearViewOffset();
 }

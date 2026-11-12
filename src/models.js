@@ -1336,52 +1336,7 @@ function limb(parent, m, x, y, z, len, r = 0.12, rx = 0, rz = 0) {
 }
 
 // The other creatures are built in creatures.js, on a shared body.
-export { skeletonWarrior, goblin, orc, cultist, wraith, oozeCube, giantSpider, ogre } from './creatures.js';
-
-export function youngDragon() {
-  const [g, b] = creature();
-  // body
-  add(b, SP(2.2, 14, 10), 'redScale', 0, 3.4, -0.6).scale.set(1, 0.85, 1.6);
-  add(b, SP(1.7, 12, 8), 'bellyScale', 0, 3.0, 0.3).scale.set(0.9, 0.8, 1.2);
-  // legs
-  for (const [x, z] of [[-1.5, 1.6], [1.5, 1.6], [-1.6, -2.6], [1.6, -2.6]]) {
-    limb(b, 'redScale', x, 3.0, z, 3.0, 0.45, 0, x > 0 ? -0.15 : 0.15);
-    add(b, BX(0.8, 0.3, 1.1), 'redScale', x * 1.1, 0.15, z + 0.3);
-  }
-  // neck and head
-  const neck = G();
-  for (let k = 0; k < 6; k++) add(neck, SP(0.75 - k * 0.04, 10, 8), 'redScale', 0, k * 0.65, k * 0.35);
-  neck.position.set(0, 4.4, 2.0);
-  neck.rotation.x = -0.25;
-  b.add(neck);
-  const head = G();
-  add(head, BX(1.2, 0.9, 2.0), 'redScale', 0, 0, 0.4);
-  add(head, BX(0.9, 0.4, 1.4), 'redScale', 0, -0.45, 0.75);
-  add(head, CO(0.18, 1.4, 6), 'horn', -0.4, 0.6, -0.7, -1.0, 0, 0.15);
-  add(head, CO(0.18, 1.4, 6), 'horn', 0.4, 0.6, -0.7, -1.0, 0, -0.15);
-  add(head, SP(0.13, 6, 4), 'eyeRed', -0.5, 0.2, 0.7);
-  add(head, SP(0.13, 6, 4), 'eyeRed', 0.5, 0.2, 0.7);
-  for (let k = 0; k < 5; k++) add(head, CO(0.06, 0.25, 4), 'teeth', -0.35 + k * 0.17, -0.3, 1.35, PI, 0, 0);
-  head.position.set(0, 8.4, 4.4);
-  b.add(head);
-  // wings
-  for (const side of [-1, 1]) {
-    const w = new THREE.Shape();
-    w.moveTo(0, 0); w.lineTo(5.5, 2.5); w.lineTo(6.5, -0.5); w.lineTo(4.6, -1.2); w.lineTo(3.4, -2.6); w.lineTo(2.0, -2.0); w.lineTo(0, -1.4); w.lineTo(0, 0);
-    const wing = add(b, new THREE.ShapeGeometry(w), 'wing', side * 1.2, 5.2, -0.8);
-    wing.scale.x = side;
-    wing.rotation.set(-0.3, side * -0.35, side * 0.35);
-    add(b, CY(0.12, 0.2, 6.0, 6), 'redScale', side * 3.6, 6.4, -1.2, 0, side * -0.35, side * (PI / 2 - 0.05) - side * 0.4);
-  }
-  // tail
-  let tx = 0, tz = -3.6, ty = 3.0;
-  for (let k = 0; k < 9; k++) {
-    add(b, SP(0.8 - k * 0.08, 8, 6), 'redScale', tx, ty, tz);
-    tz -= 0.75; tx += Math.sin(k * 0.6) * 0.35; ty = Math.max(0.6, ty - 0.3);
-  }
-  add(b, CO(0.35, 0.9, 4), 'redScale', tx, ty, tz - 0.3, -PI / 2, 0, 0);
-  return g;
-}
+export { skeletonWarrior, goblin, orc, cultist, wraith, oozeCube, giantSpider, ogre, youngDragon } from './creatures.js';
 
 // ======================= WIDE EDGE PIECES =======================
 // Built centred on the origin along x, `span` squares wide.

@@ -108,7 +108,7 @@ export function buildUI(root, H) {
   document.addEventListener('click', (e) => { if (!menu.contains(e.target)) closeMenu(); });
 
   const topbar = h('div', { class: 'topbar' },
-    h('div', { class: 'wordmark' }, 'Dungeon Forge', h('small', {}, '5 ft squares')),
+    h('div', { class: 'wordmark' }, 'Dungeon Forge'),
     nameInput, h('div', { class: 'sep' }), landSel, h('div', { class: 'sep' }), timebox, lightbox,
     h('div', { class: 'spacer' }),
     h('div', { class: 'group', role: 'group', 'aria-label': 'Undo and redo' }, undoBtn, redoBtn),
@@ -473,6 +473,7 @@ export function buildUI(root, H) {
     },
     setTool(t) {
       state.tool = t;
+      palette.classList.toggle('placing', t === 'place'); // the pieces show only while placing
       for (const [k, b] of Object.entries(toolBtns)) b.classList.toggle('on', k === t && (t !== 'place' || !!state.selected || true));
       if (t !== 'place') { state.selected = null; for (const c of Object.values(cards)) c.classList.remove('on'); }
       showDesc(state.selected ? byId[state.selected] : null);

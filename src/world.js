@@ -713,6 +713,7 @@ export class World {
           c.yaw += diff * Math.min(1, dt * 3);
           n.rotation.y = c.yaw;
           n.rotation.x = 0;
+          n.rotation.z = c.path ? Math.sin(time * 11) * 0.07 : 0; // a rolling gait while it walks
         }
         // an attack: a short lunge at the walker, the weapon arm drawn back and then brought down
         let lunge = 0, swing = 0;

@@ -84,6 +84,7 @@ The first build compiles a few hundred Rust crates and takes several minutes; la
 | `src/walk.js` | First-person movement, jumping, collision, what the walker aims at, and input (keyboard and mouse, gamepad, touch) |
 | `src/rules.js` | Tabletop rules as plain data and dice: the four hero classes, creature stats, attack and saving rolls. Change the balance here |
 | `src/adventure.js` | Reads how a map can be walked and adds a start, exit, locked door with key and traps (the menu's *Make this map a game*, the samples and the random keep) |
+| `src/furniture.js` | The everyday furniture (tables, chair, bench, bed, bookshelf, throne), modelled at real size for 5 ft squares |
 | `src/creatures.js` | The creature models, built on one shared two-legged body with a weapon arm that swings |
 | `src/fx.js` | Pooled glowing effects for the game: bolts, bursts and sparks |
 | `src/game.js` | The game played in walk mode: noticing, initiative, turns, creature path-finding and attacks, traps, keys, the exit and the end-of-run summary |
@@ -103,7 +104,7 @@ The first build compiles a few hundred Rust crates and takes several minutes; la
 - On 120 Hz and faster displays the app draws every second (or fourth) frame, giving 60 to 80 evenly paced frames a second. Displays up to 100 Hz draw every frame.
 - Point-light shadows render dungeon geometry only. The landscape is excluded through render layers.
 - **Graphics: auto** (menu, the default) changes the drawing resolution to follow the frame rate (`AutoScale` in `src/perf.js`). Two slow seconds in a row step it down (100, 85, 72, 60, 50 % of full, bloom off below 65 %); a calm stretch tries one step back up, and waits twice as long next time if that step was too much. If the lowest step is still below 24 frames a second it switches to the low preset; if the lower resolution gained nothing (the CPU or a capped display is the limit) it returns to full resolution and stops trying until the next map or walk. *Download picture* always draws at full resolution.
-- **Graphics: high** keeps full resolution and never changes by itself. **Graphics: low** uses 8 lights, 1 shadowed light, no bloom and pixel ratio 1. Auto starts from the low preset on phones, on machines with 2 or fewer CPU cores and on GPUs with small shader limits, and any setting falls back to it when a shader fails to compile.
+- **Graphics: high** keeps full resolution and never changes by itself. It alone adds ambient occlusion (`GTAOPass`, which draws the scene a second time) and a final grade (contrast, colour, darker corners); auto and low never run them. **Graphics: low** uses 8 lights, 1 shadowed light, no bloom and pixel ratio 1. Auto starts from the low preset on phones, on machines with 2 or fewer CPU cores and on GPUs with small shader limits, and any setting falls back to it when a shader fails to compile.
 - Measured on an RTX 3060 laptop GPU at 1024 × 768: a frame of the crypt costs about 3 ms, nearly all of it CPU time submitting draw calls; game logic is under 0.3 ms. The GPU cost is per pixel, about 0.5 ms per megapixel in the editor and two to three times that in first person, which is what an integrated GPU runs out of first. It was not measured on an integrated GPU.
 - Drawing errors and GPU resets show a visible message instead of a frozen canvas.
 

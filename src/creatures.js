@@ -320,3 +320,73 @@ export function giantSpider() {
   }
   return g;
 }
+
+// A young red dragon, about 14 ft from snout to rump with its wings half open. It fills three
+// squares by three and does not walk; it turns its whole body to watch the walker.
+export function youngDragon() {
+  const [g, b] = creature();
+  const R = 'redScale', Bl = 'bellyScale';
+  // barrel of a body, paler underneath, a ridge of spines along the back
+  add(b, SP(1, 16, 12), R, 0, 4.6, -0.6).scale.set(2.5, 2.2, 4.3);
+  add(b, SP(1, 14, 10), Bl, 0, 3.9, -0.3).scale.set(2.0, 1.7, 3.7);
+  for (let k = 0; k < 9; k++) add(b, CO(0.22, 0.9 - Math.abs(k - 4) * 0.08, 4), 'horn', 0, 6.9 - Math.abs(k - 3.5) * 0.09, -4.0 + k * 0.85, -0.25, 0, 0);
+  // four legs: haunch, shin, a broad foot with three claws
+  for (const [x, z, s] of [[-2.2, 2.2, 0.9], [2.2, 2.2, 0.9], [-2.4, -3.2, 1.15], [2.4, -3.2, 1.15]]) {
+    add(b, SP(1, 10, 8), R, x * 0.92, 3.6, z).scale.set(0.95 * s, 1.5 * s, 1.25 * s);
+    add(b, CY(0.42 * s, 0.5 * s, 2.3, 8), R, x * 1.05, 1.5, z + 0.25, 0.2, 0, 0);
+    add(b, BX(1.1 * s, 0.45, 1.7 * s), R, x * 1.08, 0.24, z + 0.75);
+    for (let c = -1; c <= 1; c++) add(b, CO(0.13, 0.6, 5), 'horn', x * 1.08 + c * 0.36 * s, 0.2, z + 1.75 * s, PI / 2 + 0.2, 0, 0);
+  }
+  // an S of a neck rising to the head
+  const neck = [[4.0, 5.6], [4.9, 6.6], [5.5, 7.8], [5.8, 9.0], [5.9, 10.1]];
+  neck.forEach(([z, y], k) => {
+    add(b, SP(1.2 - k * 0.11, 10, 8), R, 0, y, z);
+    add(b, SP(0.95 - k * 0.1, 8, 6), Bl, 0, y - 0.25, z + 0.35);
+    add(b, CO(0.16, 0.6, 4), 'horn', 0, y + 1.15 - k * 0.1, z - 0.5, -0.5, 0, 0);
+  });
+  const head = G();
+  head.position.set(0, 10.6, 6.6);
+  head.rotation.x = 0.22;
+  add(head, SP(1, 12, 10), R, 0, 0, 0).scale.set(0.95, 0.85, 1.25);
+  add(head, BX(1.15, 0.7, 2.0), R, 0, -0.1, 1.5);
+  add(head, BX(0.9, 0.5, 0.7), R, 0, 0.05, 2.6);
+  add(head, BX(0.95, 0.3, 2.3), Bl, 0, -0.75, 1.35, 0.16, 0, 0); // the lower jaw, a little open
+  for (const s of [-1, 1]) {
+    add(head, CO(0.2, 1.9, 6), 'horn', s * 0.55, 0.85, -0.85, -1.15, 0, s * 0.22);
+    add(head, CO(0.13, 0.9, 5), 'horn', s * 0.85, 0.3, -0.6, -1.3, 0, s * 0.6);
+    add(head, SP(0.17, 8, 6), 'eyeRed', s * 0.62, 0.3, 0.75);
+    add(head, BX(0.5, 0.14, 0.7), R, s * 0.6, 0.52, 0.7, 0, 0, s * 0.3); // brow
+    add(head, SP(0.09, 6, 4), 'pitBlack', s * 0.28, 0.32, 2.9);
+    for (let k = 0; k < 6; k++) {
+      add(head, CO(0.07, 0.3, 4), 'teeth', s * 0.5, -0.5, 0.7 + k * 0.36, PI, 0, 0);
+      add(head, CO(0.06, 0.24, 4), 'teeth', s * 0.42, -0.58, 0.85 + k * 0.33);
+    }
+  }
+  b.add(head);
+  // wings: an arm, three long fingers and the skin between them
+  for (const s of [-1, 1]) {
+    const wing = G();
+    wing.position.set(s * 1.7, 6.2, 0.2);
+    wing.rotation.set(-0.15, s * -0.3, s * 0.42);
+    add(wing, CY(0.2, 0.3, 4.4, 6), R, s * 2.1, 0.5, 0, 0, 0, -s * 1.2);
+    const tips = [[7.6, 3.2], [8.6, 0.4], [7.0, -2.4]];
+    for (const [tx, ty] of tips) {
+      const len = Math.hypot(tx - 4.1, ty - 1.3);
+      add(wing, CY(0.07, 0.15, len, 5), R, s * (4.1 + (tx - 4.1) / 2), 1.3 + (ty - 1.3) / 2, 0, 0, 0, -s * Math.atan2(tx - 4.1, ty - 1.3));
+    }
+    const skin = new THREE.Shape();
+    skin.moveTo(0, 0); skin.lineTo(4.1, 1.3); skin.lineTo(7.6, 3.2); skin.quadraticCurveTo(7.2, 1.6, 8.6, 0.4); skin.quadraticCurveTo(7.0, -0.6, 7.0, -2.4); skin.quadraticCurveTo(4.6, -1.4, 3.0, -2.6); skin.quadraticCurveTo(1.6, -1.4, 0, -1.6); skin.lineTo(0, 0);
+    const m = add(wing, new THREE.ShapeGeometry(skin), 'wing', 0, 0, -0.03);
+    m.scale.x = s;
+    b.add(wing);
+  }
+  // a long tail curling to one side, ending in a blade
+  let tx = 0, tz = -4.6, ty = 4.0;
+  for (let k = 0; k < 11; k++) {
+    add(b, SP(1.25 - k * 0.1, 8, 6), R, tx, ty, tz);
+    if (k % 2 === 0) add(b, CO(0.15, 0.55, 4), 'horn', tx, ty + 1.2 - k * 0.1, tz);
+    tz -= 0.95 - k * 0.03; tx += Math.sin(k * 0.45) * 0.55; ty = Math.max(0.5, ty - 0.42);
+  }
+  add(b, CO(0.6, 1.5, 4), 'horn', tx, ty, tz - 0.5, -PI / 2, 0, 0).scale.x = 0.3;
+  return g;
+}
