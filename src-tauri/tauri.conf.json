@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Dungeon Forge",
-  "version": "0.1.0",
+  "version": "0.4.1",
   "identifier": "app.dungeonforge.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -14,8 +14,8 @@
       {
         "label": "main",
         "title": "Dungeon Forge",
-        "width": 1440,
-        "height": 900,
+        "width": 1280,
+        "height": 800,
         "minWidth": 1000,
         "minHeight": 640,
         "center": true,
@@ -31,7 +31,6 @@
   "bundle": {
     "active": true,
     "targets": [
-      "nsis",
       "msi"
     ],
     "icon": [
@@ -42,7 +41,7 @@
       "icons/icon.ico"
     ],
     "category": "Game",
-    "shortDescription": "Design high-fantasy dungeons on a 3 ft grid and walk through them.",
+    "shortDescription": "Design high-fantasy dungeons on a 5 ft grid and walk through them.",
     "windows": {
       "nsis": {
         "installMode": "currentUser"
