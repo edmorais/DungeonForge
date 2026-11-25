@@ -534,7 +534,7 @@ export function buildUI(root, H) {
     (matchMedia('(pointer: coarse)').matches
       ? h('ol', {},
         h('li', {}, 'With Move selected, drag to look around. Two fingers turn and zoom.'),
-        h('li', {}, 'Choose a piece in the palette below, then tap the map to place it.'),
+        h('li', {}, 'Tap Place, choose a piece, then tap the map to place it.'),
         h('li', {}, 'Tap Move again before dragging the view, so nothing is placed by accident.'),
         h('li', {}, 'Tap Play to explore what you built.'))
       : h('ol', {},

@@ -1,6 +1,6 @@
 {
   "name": "dungeon-forge",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "A three.js sandbox for designing high-fantasy dungeons on a 5 ft grid",
   "scripts": {
     "dev": "vite",

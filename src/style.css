@@ -512,7 +512,7 @@ select.styled { background-color: rgba(255, 251, 236, 0.7); }
 /* while the menu is open the scene panel and the building tools step aside; they come back as they were */
 .menu-open .palette, .menu-open .scene-panel, .menu-open .coach { visibility: hidden; }
 
-@media (max-width: 1100px) { .scene-btn .scene-sum { max-width: 170px; } }
+@media (max-width: 1100px) { .scene-btn .scene-sum, .scene-btn .chev { display: none; } }
 @media (max-width: 760px) {
   .topbar { grid-template-columns: auto 1fr auto; height: 48px; padding: 0 6px; gap: 6px; flex-wrap: nowrap; }
   .menu-btn { padding: 0 8px; }
@@ -575,3 +575,15 @@ select.styled { background-color: rgba(255, 251, 236, 0.7); }
 .shelf .tags i { font-style: normal; font-size: 11.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-soft); color: var(--muted); }
 @media (max-width: 900px) { .shelf { grid-auto-columns: calc((100% - 10px) / 2); } }
 @media (max-width: 520px) { .shelf { grid-auto-columns: 82%; } .shelf-count { display: none; } }
+
+/* ================= the first-run hint on phones =================
+   The wide-palette rule above moves the hint to the right of the palette (left: 376px), which on a
+   phone is off the screen. On narrow screens it sits under the top bar, full width, clear of the
+   tools at the bottom, and scrolls if a short screen cannot hold it. */
+@media (max-width: 760px) {
+  .coach { left: 8px; right: 8px; top: 62px; bottom: auto; width: auto; max-height: calc(100% - 200px); overflow-y: auto; font-size: 15px; z-index: 25; }
+  .coach::before { display: none; }
+  .coach ol { gap: 6px; }
+  .coach .btn { height: 40px; padding: 0 18px; }
+}
+@media (min-width: 761px) and (max-width: 1100px) { .coach { width: min(300px, calc(100% - 392px)); } }

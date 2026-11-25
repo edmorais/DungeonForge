@@ -1,6 +1,6 @@
 [package]
 name = "dungeon-forge"
-version = "0.6.0"
+version = "0.6.1"
 description = "Dungeon Forge: a 3D dungeon sandbox on a 3 ft grid"
 authors = []
 license = "MIT"
