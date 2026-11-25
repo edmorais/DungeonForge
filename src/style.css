@@ -466,3 +466,112 @@ select.styled { background-color: rgba(255, 251, 236, 0.7); }
 .palette:not(.placing) { bottom: auto; grid-template-rows: auto auto; }
 .palette:not(.placing) .cats, .palette:not(.placing) .items { display: none; }
 @media (max-width: 760px) { .palette:not(.placing) { top: auto; height: auto; bottom: 46px; } }
+
+/* ================= top bar: the menu on the left, the map's name in the middle, the scene and Play on the right ================= */
+.topbar { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; padding: 0 8px; }
+.tb-left, .tb-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tb-right { justify-content: flex-end; }
+.tb-mid { display: flex; justify-content: center; min-width: 0; }
+.topbar .name-input { display: block; width: clamp(150px, 26vw, 360px); text-align: center; font-size: 19px; }
+.ico { display: inline-flex; }
+.ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.menu-btn { display: inline-flex; align-items: center; gap: 9px; height: 36px; padding: 0 12px 0 9px; border-radius: var(--r-sm); border: 1px solid transparent; background: none; cursor: pointer; color: var(--brass-hi); }
+.menu-btn .wm-text { font-family: var(--display); font-size: 20px; line-height: 1; white-space: nowrap; }
+.menu-btn:hover { border-color: var(--line-soft); background: var(--panel-2); }
+.menu-btn.open { border-color: var(--brass); background: var(--panel-2); }
+.topbar .menu { left: -2px; right: auto; top: 44px; min-width: 260px; }
+.menu .narrow-only { display: none; }
+.menu button:disabled { opacity: 0.4; cursor: default; }
+.prow { display: grid; grid-template-columns: 82px 1fr; align-items: center; gap: 10px; padding: 5px 10px; min-height: 34px; }
+.prow-label { color: var(--muted); font-size: 13.5px; }
+.prow .seg { justify-self: start; }
+.prow .seg button { padding: 4px 11px; font-size: 13px; }
+.menu .prow .seg { justify-self: end; }
+.menu .prow { grid-template-columns: 1fr auto; }
+
+/* the scene button and its panel, which stays open until it is put away */
+.scene-wrap { position: relative; }
+.scene-btn { gap: 7px; max-width: 280px; }
+.scene-btn .scene-sum { overflow: hidden; text-overflow: ellipsis; }
+.scene-btn .ico svg { width: 16px; height: 16px; }
+.scene-btn.on .chev { transform: rotate(180deg); transform-origin: 12px 12.5px; }
+.scene-panel { position: absolute; right: 0; top: 44px; width: 360px; padding: 6px; z-index: 20; color: var(--vellum);
+  background-color: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: inset 0 0 0 3px var(--panel-solid), inset 0 0 0 4px var(--line-soft), var(--shadow); }
+.scene-panel .menu-title { padding: 6px 10px 2px; font-family: var(--display); font-size: 13px; letter-spacing: 0.06em; color: var(--faint); }
+.scene-panel hr { border: 0; border-top: 1px solid var(--line-soft); margin: 5px 4px; }
+.scene-panel select.styled { width: 100%; }
+.scene-panel .timebox { min-width: 0; max-width: none; flex: none; width: 100%; gap: 8px; }
+.scene-panel .time-read { min-width: 0; }
+.scene-panel .lightbox { width: 100%; }
+.scene-panel .lightbox input[type=range] { flex: 1; width: auto; }
+.scene-panel .lb-ico, .scene-panel .lb-label { display: none; }
+.prow-btn { display: flex; width: 100%; justify-content: space-between; padding: 8px 10px; border: 0; border-radius: var(--r-sm); background: none; cursor: pointer; text-align: left; }
+.prow-btn:hover { background: var(--panel-2); }
+.prow-btn kbd { font-family: var(--sans); font-size: 12px; color: var(--muted); }
+
+/* while the menu is open the scene panel and the building tools step aside; they come back as they were */
+.menu-open .palette, .menu-open .scene-panel, .menu-open .coach { visibility: hidden; }
+
+@media (max-width: 1100px) { .scene-btn .scene-sum { max-width: 170px; } }
+@media (max-width: 760px) {
+  .topbar { grid-template-columns: auto 1fr auto; height: 48px; padding: 0 6px; gap: 6px; flex-wrap: nowrap; }
+  .menu-btn { padding: 0 8px; }
+  .menu-btn .wm-text, .scene-btn .scene-sum, .scene-btn .chev, .btn.play .play-label { display: none; }
+  .topbar .group { display: none; }
+  .topbar .name-input { width: 100%; font-size: 16px; }
+  .menu .narrow-only { display: flex; }
+  .topbar .menu { position: fixed; left: 6px; right: 6px; top: 60px; min-width: 0; max-height: calc(100% - 120px); overflow: auto; }
+  .scene-panel { position: fixed; left: 6px; right: 6px; top: 60px; width: auto; }
+}
+
+/* ================= dark theme (Menu → Settings → Theme): the night-blue panels and brass of the play HUD ================= */
+:root.theme-dark {
+  --ink: #161b24; --panel: rgba(30, 36, 48, 0.94); --panel-solid: #1e2430; --panel-2: #283041; --panel-3: #323b4f;
+  --line: rgba(201, 163, 90, 0.3); --line-soft: rgba(231, 223, 204, 0.1);
+  --vellum: #e7dfcc; --muted: #a39c8c; --faint: #7d776c; --brass: #c9a35a; --brass-hi: #e2c07a; --verdigris: #5aa197; --oxblood: #c4574a;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+.theme-dark .topbar, .theme-dark .palette, .theme-dark .status, .theme-dark .compass, .theme-dark .modal, .theme-dark .menu, .theme-dark .coach, .theme-dark .toast, .theme-dark .problem { background-image: none; }
+.theme-dark .btn { background: var(--panel-2); }
+.theme-dark .btn:hover { background: var(--panel-3); }
+.theme-dark .btn.on, .theme-dark .topbar .group .btn.on { background: rgba(201, 163, 90, 0.14); }
+.theme-dark .btn.primary, .theme-dark .seg button.on { background: var(--brass); border-color: var(--brass); color: #1c1710; }
+.theme-dark .btn.primary:hover { background: var(--brass-hi); }
+.theme-dark .topbar .group, .theme-dark .seg, .theme-dark .name-input:focus, .theme-dark .find input { background: rgba(0, 0, 0, 0.25); }
+.theme-dark .topbar .group .btn { background: transparent; }
+.theme-dark .topbar .group .btn:hover, .theme-dark .card:hover, .theme-dark .recent button:hover, .theme-dark .start:hover { background: var(--panel-3); }
+.theme-dark select.styled { background-color: var(--panel-2); }
+.theme-dark .tool { background: rgba(0, 0, 0, 0.18); }
+.theme-dark .tool.on, .theme-dark .cat.on, .theme-dark .card.on { background: rgba(201, 163, 90, 0.12); }
+.theme-dark .tool.erase.on, .theme-dark .status .where.bad { color: #ef8a7c; }
+.theme-dark .cat:hover { background: rgba(255, 255, 255, 0.04); }
+.theme-dark .card, .theme-dark .recent button { background: rgba(255, 255, 255, 0.035); }
+.theme-dark .card .ph { background: radial-gradient(circle, rgba(201, 163, 90, 0.18), transparent 65%); }
+.theme-dark .menu button:hover, .theme-dark .prow-btn:hover { background: var(--panel-2); }
+.theme-dark .start { background: var(--panel-2); }
+.theme-dark .modal-bg { background: radial-gradient(ellipse at 50% 40%, rgba(22, 27, 36, 0.55), rgba(10, 12, 18, 0.88)); }
+.theme-dark .io-area { background: var(--ink); }
+.theme-dark .dial-knob, .theme-dark .dial-knob.moon { box-shadow: 0 0 0 2px rgba(22, 27, 36, 0.85), 0 0 14px rgba(255, 190, 80, 0.5); }
+.theme-dark .dial-ticks { background: repeating-linear-gradient(90deg, rgba(231, 223, 204, 0.35) 0 1px, transparent 1px calc(100% / 24)); }
+.theme-dark .lightbox input[type=range]::-webkit-slider-thumb { background: var(--brass-hi); box-shadow: 0 0 0 2px rgba(22, 27, 36, 0.85); }
+.theme-dark .lightbox input[type=range]::-moz-range-thumb { background: var(--brass-hi); box-shadow: 0 0 0 2px rgba(22, 27, 36, 0.85); }
+.theme-dark .loading { background: var(--ink); }
+
+/* ================= welcome screen: a credit, and the finished maps on a shelf that scrolls sideways ================= */
+.modal p.credit { margin: 6px 0 0; font-family: var(--display); font-size: 16px; color: var(--muted); letter-spacing: 0.02em; }
+.modal p.credit + .lede { margin-top: 12px; }
+.shelf-head { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; }
+.shelf-head .samples-title { margin: 0; flex: 1; }
+.shelf-count { font-size: 13px; color: var(--faint); font-variant-numeric: tabular-nums; margin-right: 4px; }
+.shelf-head .btn.icon { font-size: 20px; }
+.shelf-head .btn:disabled { opacity: 0.35; cursor: default; }
+.shelf { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 30px) / 4); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0; padding: 2px 2px 10px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; overscroll-behavior-x: contain; }
+.shelf:focus-visible { outline-offset: 4px; }
+.shelf .start.sample { grid-template-columns: 1fr; align-items: start; padding: 13px 14px 12px; scroll-snap-align: start; min-height: 150px; }
+.shelf .start.sample > div { display: flex; flex-direction: column; height: 100%; }
+.shelf .start.sample b { font-size: 18px; line-height: 1.15; margin-bottom: 4px; }
+.shelf .start.sample span { font-size: 13px; }
+.shelf .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; padding-top: 8px; }
+.shelf .tags i { font-style: normal; font-size: 11.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-soft); color: var(--muted); }
+@media (max-width: 900px) { .shelf { grid-auto-columns: calc((100% - 10px) / 2); } }
+@media (max-width: 520px) { .shelf { grid-auto-columns: 82%; } .shelf-count { display: none; } }

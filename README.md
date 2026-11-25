@@ -58,21 +58,31 @@ Made with Claude Opus 5.5.
 ## Getting started
 
 1. **Open Dungeon Forge** in a recent version of Chrome, Edge, Firefox or Safari. It needs a browser with WebGL 2, which almost all browsers from the last few years have. If you have the Windows app, start it like any other program.
+
+   **Install it as an app.** On the published web version, Chrome and Edge show an install button in the address bar, and on a phone you can choose *Add to Home Screen*. The installed app opens in its own window and works offline once it has been opened.
 2. **Choose how to start** on the welcome screen:
    - **Empty site**: a blank grid. You build everything.
    - **Random keep**: a new walled keep every time, already split into rooms with doors, furniture, loot and monsters.
-   - **A finished map**: eight hand-made examples to explore or take apart:
+   - **A finished map**: sixteen hand-made maps to explore, play or take apart. They sit on a shelf that scrolls sideways: use the ‹ › buttons, the mouse wheel or a swipe.
 
      | Map | What it shows |
      | --- | --- |
-     | Ziggurat of the Dawn Sun | A stepped temple rising 24 ft from the desert, with a stair up every face |
-     | The Deepdelve Mine | A yard in the hills, then tunnels 9, 15 and 24 ft down to a forge over lava |
-     | Sunken Arena of Varn | Seating tiers stepping 12 ft down to a sand floor, with a royal box |
-     | Spires of the Pale Lich | Stone platforms in the dark void, climbing to a spire 30 ft up |
-     | Watchtower on the Grey Crag | Snowy terraces up to a tower, with a spider's cave below |
      | The sunken crypt | A keep with a throne hall, chapel, library, prison and a hidden vault |
+     | The Crossroads Inn | A roadside inn on the gaming table, with rooms to rent and trouble in the cellar. A good first game |
+     | The Goblin Warren | Caves in the hills: a guard cave, a fungus grotto, a larder and the chief’s hall 5 ft up |
      | Bandit camp | A palisade fort in the forest with tents, a campfire and stolen loot |
+     | Blackwood Manor | A haunted house in the marsh, a shrine behind a secret door and a garden of graves |
+     | Temple of the Coiled Serpent | A forest temple 5 ft up, with water channels in the nave and a guarded treasury |
+     | The Frozen Barrow | A burial mound dug into the tundra, its chamber 7.5 ft below the snow |
+     | The Undercity Sewers | Brick tunnels round a water channel: a thieves’ guild, a prison and a spider’s nest |
+     | The Dwarf-King’s Hall | A hold taken by orcs: a castle gate, a great hall, a forge and a vault 5 ft down |
      | Drowned shrine | Ruined columns and a fountain on a desert dune at dusk |
+     | The Dragon’s Caldera | A crater rim 5 ft up, a lake of lava and a dragon asleep on its hoard |
+     | Ziggurat of the Dawn Sun | A stepped temple rising 20 ft from the desert, with a stair up every face |
+     | The Deepdelve Mine | A yard in the hills, then tunnels 7.5, 12.5 and 20 ft down to a forge over lava |
+     | Sunken Arena of Varn | Seating tiers stepping 10 ft down to a sand floor, with a royal box |
+     | Watchtower on the Grey Crag | Snowy terraces up to a tower 17.5 ft up, with a spider’s cave below |
+     | Spires of the Pale Lich | Stone platforms in the dark void, climbing to a spire 25 ft up |
 
 3. **Look around.** Drag to slide the view, right-drag to turn it, scroll to zoom.
 4. **Build something.** Click a piece in the palette on the left, then click the map to place it. Press **Esc** when you are done.
@@ -90,17 +100,31 @@ Your work is saved in the browser as you go. Next time, choose **Continue where 
 
 | Control | What it does |
 | --- | --- |
-| Dungeon name | Click to rename your map. The name is used for exported files. |
-| Landscape | The setting around your map (see [Setting the scene](#setting-the-scene)). |
-| Time dial | Drag to set the hour. The sky, sun and shadows follow. |
-| ▶ | Lets time pass: a full day in two minutes. |
-| ☀ slider | Overall light, from 0% (only flames light the map) to 200%. |
-| Walls | Cuts walls down to full height, 5 ft or 2.5 ft so you can see into rooms. |
-| # | Shows or hides the grid. |
-| ♪ | Sound on or off. |
+| ☰ **Dungeon Forge** | Opens the menu (see below). While it is open the tools and the scene panel step aside; they come back when it closes. |
+| Dungeon name | In the middle. Click to rename your map. The name is used for exported files. |
+| Scene button | Shows the landscape and the hour, and opens the **scene panel**. The panel stays open while you work; press the button again or Esc to put it away. |
 | ↶ ↷ | Undo and redo. |
 | **Play** | Play the map in first person. |
-| ☰ | The menu: new dungeon, random keep, import and export, picture, battle map, top-down view, graphics quality, clear everything and the controls list. |
+
+**The scene panel**
+
+| Control | What it does |
+| --- | --- |
+| Landscape | The setting around your map (see [Setting the scene](#setting-the-scene)). |
+| Time | Drag to set the hour; the sky, sun and shadows follow. ▶ lets time pass: a full day in two minutes. |
+| Light | Overall light, from 0% (only flames light the map) to 200%. |
+| Walls | Full, 5 ft or 2.5 ft: cuts walls down so you can see into rooms (C). |
+| Grid | Shows or hides the grid (G). |
+| Top-down view | Looks straight down at the map (T). |
+
+**The menu**
+
+- **File:** new dungeon, import a map, export this map, take a picture, export a battle map.
+- **Map:** generate a random keep, make this map a game, clear everything.
+- **Settings:** Graphics (auto, high or low), Theme (paper or dark) and Sound. The theme is remembered in this browser.
+- **Controls:** every key and mouse action.
+
+On a phone the bar keeps only the menu button, the name, the scene button and Play; undo and redo move into the menu.
 
 **Left panel**
 
@@ -164,7 +188,7 @@ Made a mistake? **Ctrl+Z** undoes it and **Ctrl+Shift+Z** redoes it.
 
 ### Seeing inside
 
-Walls are 10 ft tall, so from above they hide your rooms. Press **C** (or the **Walls** button) to cut them down to 5 ft or 2.5 ft. This changes only the view, not your map. Chandeliers and other ceiling pieces are hidden while walls are cut down.
+Walls are 10 ft tall, so from above they hide your rooms. Press **C** (or choose **Walls** in the scene panel) to cut them down to 5 ft or 2.5 ft. This changes only the view, not your map. Chandeliers and other ceiling pieces are hidden while walls are cut down.
 
 ---
 
@@ -398,7 +422,7 @@ To place them yourself, the pieces are under **Adventure** in the palette (the l
 
 ## Tips and troubleshooting
 
-- **The view is slow or jerky.** Open ☰ and switch **Graphics: high** to **low**. Low uses fewer lights and shadows and no glow, and runs well on older laptops and phones. Dungeon Forge already switches to low by itself on phones, on small computers, and when the first seconds draw too slowly.
+- **The view is slow or jerky.** Open ☰ and set **Settings → Graphics** to **low**. Low uses fewer lights and shadows and no glow, and runs well on older laptops and phones. Dungeon Forge already switches to low by itself on phones, on small computers, and when the first seconds draw too slowly.
 - **I placed something by accident.** Press Ctrl+Z, then press Esc to go back to the Move tool, where dragging never builds.
 - **A piece will not go where I want.** Read the reason in the bottom bar: there may already be a piece of the same kind there, or the square may be water, lava or a pit.
 - **I cannot see inside my rooms.** Press C to cut the walls down, or T for a top-down view.

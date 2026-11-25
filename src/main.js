@@ -23,7 +23,8 @@ import { buildUI } from './ui.js';
 import { renderThumbnails } from './thumbs.js';
 import { Ambience } from './audio.js';
 import { isDesktop, saveWithDialog } from './desktop.js';
-import { sunkenCrypt, banditCamp, ruinedShrine, randomKeep, ziggurat, deepMine, sunkenArena, lichSpires, cragTower } from './samples.js';
+import { randomKeep } from './samples.js';
+import { presetById } from './presets.js';
 
 const SAVE_KEY = 'dungeon-forge:autosave:v1';
 const CUTS = [{ h: WALL_H + 1, label: 'full' }, { h: 5, label: '5 ft' }, { h: 2.6, label: '2.5 ft' }];
@@ -293,6 +294,11 @@ Object.assign(H, {
   setTime: (t) => state.setSetting('time', t),
   nudgeTime: (dt) => state.setSetting('time', (state.data.time + dt + 24) % 24),
   togglePlay: () => { playing = !playing; ui.setTime(state.data.time, playing); },
+  setWalls: (label) => {
+    cutIndex = Math.max(0, CUTS.findIndex((c) => c.label === label));
+    world.setCut(CUTS[cutIndex].h);
+    ui.setCut(CUTS[cutIndex].label);
+  },
   cycleCut: () => {
     cutIndex = (cutIndex + 1) % CUTS.length;
     world.setCut(CUTS[cutIndex].h);
@@ -328,8 +334,10 @@ Object.assign(H, {
   battleMap: () => battleMap(true),
   topView: () => toggleTopView(),
   clearMap: () => { state.checkpoint(); state.clearAll(); state.emit(); ui.toast('Map cleared. Ctrl+Z brings it back.'); },
-  toggleQuality: () => {
-    setQualityMode({ auto: 'high', high: 'low', low: 'auto' }[qualityMode]);
+  toggleQuality: () => H.setGraphics({ auto: 'high', high: 'low', low: 'auto' }[qualityMode]),
+  setGraphics: (m) => {
+    if (m === qualityMode) return;
+    setQualityMode(m);
     ui.toast({ auto: 'Graphics: auto. Sharpness follows the frame rate.', high: 'Graphics: high. Full sharpness, with shaded corners and richer colour.', low: 'Graphics: low. Fewer lights and shadows.' }[qualityMode]);
   },
   help: () => ui.showHelp(),
@@ -363,15 +371,9 @@ function startDungeon(kind) {
     state.redoStack.length = 0;
     let land = 'meadow', time = 15.5, name = 'Untitled dungeon', light = 1, view = null;
     if (kind === 'blank') { land = 'meadow'; time = 10.5; name = 'Untitled dungeon'; }
-    if (kind === 'crypt') { sunkenCrypt(state); land = 'swamp'; time = 19.4; name = state.data.name; }
-    if (kind === 'camp') { banditCamp(state); land = 'forest'; time = 18.3; name = state.data.name; }
     if (kind === 'random') { randomKeep(state); land = ['meadow', 'forest', 'highlands', 'tundra', 'swamp'][Math.floor(Math.random() * 5)]; time = 18.6; name = state.data.name; }
-    if (kind === 'shrine') { ruinedShrine(state); land = 'desert'; time = 17.7; name = state.data.name; }
-    if (kind === 'ziggurat') { ziggurat(state); land = 'desert'; time = 7.2; name = state.data.name; view = [[-44, 82, 104], [2, 4, 6]]; }
-    if (kind === 'mine') { deepMine(state); land = 'highlands'; time = 17.2; name = state.data.name; view = [[-30, 92, 96], [4, -8, 2]]; }
-    if (kind === 'arena') { sunkenArena(state); land = 'meadow'; time = 16.4; name = state.data.name; view = [[-26, 66, 78], [3, -6, 4]]; }
-    if (kind === 'crag') { cragTower(state); land = 'tundra'; time = 9.4; name = state.data.name; view = [[-40, 70, 80], [0, 8, 2]]; }
-    if (kind === 'spires') { lichSpires(state); land = 'void'; time = 21; light = 1.35; name = state.data.name; view = [[-52, 70, 70], [-4, 10, 0]]; }
+    const p = presetById[kind];
+    if (p) { p.build(state); land = p.land; time = p.time; light = p.light ?? 1; view = p.view || null; name = state.data.name; }
     state.setSetting('landscape', land);
     state.setSetting('time', time);
     state.setSetting('name', name);
@@ -1064,4 +1066,23 @@ async function boot() {
   else renderThumbnails(112, (id, url) => ui.setThumb(id, url)).then(() => { window.__thumbsDone = true; });
   window.__df = { composer, bloom, step, toScreen: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return [Math.round((v.x + 1) / 2 * window.innerWidth), Math.round((1 - v.y) / 2 * window.innerHeight)]; }, perf, auto, gate, watchFrameRate, game, beginWalk, state, world, env, editor, walker, camera, renderer, scene, pool, H, ui, startDungeon, enterWalk, exitWalk, LANDSCAPES };
 }
+// ---------- installable web app ----------
+// The normal web build registers an offline worker (public/sw.js), so the app can be installed and
+// opened without a network. Not in the dev server, the single-file and artifact builds, or the
+// Windows app, which carry their own copy.
+function registerOffline() {
+  if (!import.meta.env.PROD || import.meta.env.MODE === 'single' || isDesktop() || !('serviceWorker' in navigator)) return;
+  if (!window.isSecureContext || window.claude) return;
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register(`./sw.js?v=${__APP_VERSION__}`, { scope: './' });
+      await navigator.serviceWorker.ready;
+      // copy what this first visit already loaded, so it all works offline next time
+      const files = [location.href.split('#')[0], ...performance.getEntriesByType('resource').map((r) => r.name)];
+      (reg.active || navigator.serviceWorker.controller)?.postMessage({ cache: files });
+    } catch { /* the app works the same without it */ }
+  });
+}
+registerOffline();
+
 boot();

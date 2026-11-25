@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Dungeon Forge",
-  "version": "0.4.1",
+  "version": "0.6.0",
   "identifier": "app.dungeonforge.desktop",
   "build": {
     "frontendDist": "../dist",

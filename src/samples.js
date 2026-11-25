@@ -3,7 +3,7 @@ import { addAdventure } from './adventure.js';
 
 // Programmatic sample maps. Coordinates in the crypt are relative to the keep's corner.
 
-function helpers(state, i0, j0) {
+export function helpers(state, i0, j0) {
   const F = (a0, b0, a1, b1, t) => { for (let a = a0; a <= a1; a++) for (let b = b0; b <= b1; b++) state.setFloor(i0 + a, j0 + b, t); };
   const HW = (a0, a1, b, t = 'stoneWall') => { for (let a = a0; a <= a1; a++) state.setEdge('h', i0 + a, j0 + b, { t }); };
   const VW = (a, b0, b1, t = 'stoneWall') => { for (let b = b0; b <= b1; b++) state.setEdge('v', i0 + a, j0 + b, { t }); };
@@ -451,7 +451,7 @@ export function furnishRoom(state, rect, themeId, seed = Date.now()) {
 // ---------- presets built on raised and sunken ground ----------
 // Straight stairs climb toward: r 0 north, r 1 west, r 2 south, r 3 east.
 // A flight stands on the lower squares and rises by its own height (steps and ramps 3 ft, stairs 6 ft, long stairs and spirals 9 ft).
-function levelHelpers(state, i0, j0) {
+export function levelHelpers(state, i0, j0) {
   const base = helpers(state, i0, j0);
   const L = (a0, b0, a1, b1, level) => { for (let a = a0; a <= a1; a++) for (let b = b0; b <= b1; b++) state.setLevel(i0 + a, j0 + b, level); };
   const lv = (a, b) => state.levelAt(i0 + a, j0 + b);

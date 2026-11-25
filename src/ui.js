@@ -2,6 +2,7 @@ import { CATEGORIES, ITEMS, byId } from './catalog.js';
 import { CELL, LEVEL } from './config.js';
 import { LANDSCAPES } from './environment.js';
 import { ROOM_THEMES } from './samples.js';
+import { PRESETS } from './presets.js';
 
 const h = (tag, attrs = {}, ...kids) => {
   const el = document.createElement(tag);
@@ -44,7 +45,6 @@ function phase(t) {
 
 export function buildUI(root, H) {
   const state = { cat: 'floor', thumbs: {}, selected: null, tool: 'place' };
-  const refs = {};
 
   // ---------- top bar ----------
   const nameInput = h('input', { class: 'name-input', value: 'Untitled dungeon', 'aria-label': 'Dungeon name', spellcheck: 'false',
@@ -78,42 +78,116 @@ export function buildUI(root, H) {
     h('span', { class: 'lb-ico', 'aria-hidden': 'true', html: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>' }),
     h('span', { class: 'lb-col' }, h('span', { class: 'lb-label' }, 'Light'), lightRead), lightIn);
 
-  const cutBtn = h('button', { class: 'btn', title: 'Cut walls down to see inside (C)', onclick: () => H.cycleCut() }, h('span', { class: 'g' }, '▤'), h('span', { class: 'lbl' }, 'Walls: full'));
-  const soundBtn = h('button', { class: 'btn icon' + (H.soundOn() ? ' on' : ''), title: 'Sound on or off', 'aria-label': 'Sound', onclick: () => H.toggleSound() }, '♪');
-  const gridBtn = h('button', { class: 'btn icon on', title: 'Show grid (G)', 'aria-label': 'Show grid', onclick: () => H.toggleGrid() }, '#');
+  // a row of choices, one of them on: { el, set(value) }
+  const choice = (label, opts, pick) => {
+    const btns = opts.map(([v, t]) => h('button', { type: 'button', 'data-v': v, 'aria-pressed': 'false', onclick: (e) => { e.stopPropagation(); pick(v); } }, t));
+    const el = h('div', { class: 'seg', role: 'group', 'aria-label': label }, btns);
+    return { el, set(v) { for (const b of btns) { const on = b.dataset.v === String(v); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); } } };
+  };
+  const prow = (label, ctl) => h('div', { class: 'prow' }, h('span', { class: 'prow-label' }, label), ctl);
+  const svg = (d) => h('span', { class: 'ico', 'aria-hidden': 'true', html: `<svg viewBox="0 0 24 24">${d}</svg>` });
+
+  // ---- the scene panel: how the map looks (landscape, time, light) and how it is shown (walls, grid) ----
+  let gridState = true, soundState = H.soundOn();
+  const cutSeg = choice('Walls', [['full', 'Full'], ['5 ft', '5 ft'], ['2.5 ft', '2.5 ft']], (v) => H.setWalls(v));
+  const gridSeg = choice('Grid', [['on', 'On'], ['off', 'Off']], (v) => { if ((v === 'on') !== gridState) H.toggleGrid(); });
+  const scenePanel = h('div', { class: 'scene-panel', role: 'dialog', 'aria-label': 'Scene', hidden: true },
+    h('div', { class: 'menu-title' }, 'Scene'),
+    prow('Landscape', landSel), prow('Time', timebox), prow('Light', lightbox),
+    h('hr'),
+    h('div', { class: 'menu-title' }, 'View'),
+    prow('Walls', cutSeg.el), prow('Grid', gridSeg.el),
+    h('button', { class: 'prow-btn', type: 'button', onclick: () => H.topView() }, 'Top-down view', h('kbd', {}, 'T')));
+  const sceneSum = h('span', { class: 'scene-sum' }, '');
+  const sceneBtn = h('button', { class: 'btn scene-btn', type: 'button', title: 'Scene: landscape, time of day, light, walls and grid', 'aria-haspopup': 'dialog', 'aria-expanded': 'false',
+    onclick: (e) => { e.stopPropagation(); setScene(scenePanel.hidden); } },
+  svg('<path d="M2 19l6.5-9 4 5.5 3-3.5L22 19z"/><circle cx="17" cy="6" r="2"/>'), sceneSum, svg('<path class="chev" d="M7 10l5 5 5-5"/>'));
+  // the panel stays open while you work; its button, Esc or the menu put it away
+  function setScene(open) {
+    scenePanel.hidden = !open;
+    sceneBtn.classList.toggle('on', open);
+    sceneBtn.setAttribute('aria-expanded', String(open));
+  }
+  const sceneWrap = h('div', { class: 'scene-wrap' }, sceneBtn, scenePanel);
+  const scene = { land: '', time: '' };
+  const showScene = () => { sceneSum.textContent = `${scene.land} · ${scene.time}`; };
+
   const undoBtn = h('button', { class: 'btn icon', title: 'Undo (Ctrl+Z)', 'aria-label': 'Undo', onclick: () => H.undo() }, '↶');
   const redoBtn = h('button', { class: 'btn icon', title: 'Redo (Ctrl+Shift+Z)', 'aria-label': 'Redo', onclick: () => H.redo() }, '↷');
   const walkBtn = h('button', { class: 'btn primary play', title: 'Play your dungeon in first person (V)', onclick: () => H.walk() }, h('span', { class: 'g', 'aria-hidden': 'true' }, '▶'), h('span', { class: 'play-label' }, 'Play'));
 
-  const menu = h('div', { class: 'menu', role: 'menu' },
+  // ---- the menu, opened from the wordmark ----
+  const graphicsSeg = choice('Graphics', [['auto', 'Auto'], ['high', 'High'], ['low', 'Low']], (v) => H.setGraphics(v));
+  const themeSeg = choice('Theme', [['paper', 'Paper'], ['dark', 'Dark']], (v) => setTheme(v));
+  const soundSeg = choice('Sound', [['on', 'On'], ['off', 'Off']], (v) => { if ((v === 'on') !== soundState) H.toggleSound(); });
+  const item = (label, key, fn, extra = {}) => h('button', { type: 'button', role: 'menuitem', ...extra, onclick: () => { closeMenu(); fn(); } }, label, h('kbd', {}, key));
+  // on a phone undo and redo leave the bar and live here
+  const undoItem = item('Undo', 'Ctrl Z', () => H.undo(), { class: 'narrow-only' });
+  const redoItem = item('Redo', 'Ctrl Shift Z', () => H.redo(), { class: 'narrow-only' });
+  const menu = h('div', { class: 'menu', role: 'menu', 'aria-label': 'Menu' },
+    h('div', { class: 'menu-title' }, 'File'),
+    item('New dungeon…', 'N', () => H.newDungeon()),
+    item('Import a map…', 'Ctrl O', () => H.openFile()),
+    item('Export this map…', 'Ctrl S', () => H.saveFile()),
+    item('Take a picture', '', () => H.screenshot()),
+    item('Export battle map…', '', () => H.battleMap()),
+    h('hr'),
     h('div', { class: 'menu-title' }, 'Map'),
-    h('button', { onclick: () => { closeMenu(); H.newDungeon(); } }, 'New dungeon…', h('kbd', {}, 'N')),
-    h('button', { onclick: () => { closeMenu(); H.generate(); } }, 'Generate a random keep', h('kbd', {}, '')),
-    h('button', { title: 'Adds a start, an exit, a locked door with its key and two traps, placed along the way through your map', onclick: () => { closeMenu(); H.makeGame(); } }, 'Make this map a game', h('kbd', {}, '')),
-    h('button', { onclick: () => { closeMenu(); H.clearMap(); } }, 'Clear everything', h('kbd', {}, '')),
+    undoItem, redoItem,
+    item('Generate a random keep', '', () => H.generate()),
+    item('Make this map a game', '', () => H.makeGame(), { title: 'Adds a start, an exit, a locked door with its key and two traps, placed along the way through your map' }),
+    item('Clear everything', '', () => H.clearMap()),
     h('hr'),
-    h('div', { class: 'menu-title' }, 'Save and share'),
-    h('button', { onclick: () => { closeMenu(); H.openFile(); } }, 'Import a map…', h('kbd', {}, 'Ctrl O')),
-    h('button', { onclick: () => { closeMenu(); H.saveFile(); } }, 'Export this map…', h('kbd', {}, 'Ctrl S')),
-    h('button', { onclick: () => { closeMenu(); H.screenshot(); } }, 'Take a picture', h('kbd', {}, '')),
-    h('button', { onclick: () => { closeMenu(); H.battleMap(); } }, 'Export battle map…', h('kbd', {}, '')),
+    h('div', { class: 'menu-title' }, 'Settings'),
+    prow('Graphics', graphicsSeg.el), prow('Theme', themeSeg.el), prow('Sound', soundSeg.el),
     h('hr'),
-    h('div', { class: 'menu-title' }, 'View'),
-    h('button', { onclick: () => { closeMenu(); H.topView(); } }, 'Top-down view', h('kbd', {}, 'T')),
-    h('button', { onclick: () => { closeMenu(); H.toggleQuality(); } }, refs.qLabel = h('span', {}, 'Graphics: auto'), h('kbd', {}, '')),
-    h('hr'),
-    h('button', { onclick: () => { closeMenu(); H.help(); } }, 'Controls', h('kbd', {}, '?')));
-  const menuBtn = h('button', { class: 'btn icon menu-btn', title: 'Menu', 'aria-label': 'Menu', 'aria-haspopup': 'true', onclick: (e) => { e.stopPropagation(); menu.classList.toggle('open'); } }, '☰');
-  const closeMenu = () => menu.classList.remove('open');
-  document.addEventListener('click', (e) => { if (!menu.contains(e.target)) closeMenu(); });
+    item('Controls', '?', () => H.help()));
+  const menuBtn = h('button', { class: 'menu-btn', type: 'button', title: 'Menu', 'aria-label': 'Menu', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
+    onclick: (e) => { e.stopPropagation(); if (menu.classList.contains('open')) closeMenu(); else openMenu(); } },
+  svg('<path d="M4 7h16M4 12h16M4 17h16"/>'), h('span', { class: 'wm-text' }, 'Dungeon Forge'));
+  const menuWrap = h('div', { class: 'menu-wrap' }, menuBtn, menu);
+  // While the menu is open the scene panel and the building tools step aside (CSS on .menu-open);
+  // closing the menu brings them back exactly as they were.
+  function openMenu() {
+    menu.classList.add('open');
+    root.classList.add('menu-open');
+    menuBtn.classList.add('open');
+    menuBtn.setAttribute('aria-expanded', 'true');
+  }
+  function closeMenu() {
+    if (!menu.classList.contains('open')) return;
+    menu.classList.remove('open');
+    root.classList.remove('menu-open');
+    menuBtn.classList.remove('open');
+    menuBtn.setAttribute('aria-expanded', 'false');
+  }
+  document.addEventListener('click', (e) => { if (!menuWrap.contains(e.target)) closeMenu(); });
+  // Esc closes the menu first, then the scene panel, before the editor sees it
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || root.classList.contains('walk-mode')) return;
+    if (menu.classList.contains('open')) closeMenu();
+    else if (!scenePanel.hidden) setScene(false);
+    else return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
 
+  // ---- the interface theme: paper (light) or dark, remembered in this browser ----
+  function setTheme(t) {
+    document.documentElement.classList.toggle('theme-dark', t === 'dark');
+    themeSeg.set(t);
+    try { localStorage.setItem('dungeon-forge:theme', t); } catch { /* not kept */ }
+  }
+  let theme = 'paper';
+  try { theme = localStorage.getItem('dungeon-forge:theme') === 'dark' ? 'dark' : 'paper'; } catch { /* default */ }
+  setTheme(theme);
+  graphicsSeg.set('auto'); soundSeg.set(soundState ? 'on' : 'off'); gridSeg.set('on'); cutSeg.set('full');
+
+  // left: the menu; middle: the map's name; right: the scene, undo and Play
   const topbar = h('div', { class: 'topbar' },
-    h('div', { class: 'wordmark' }, 'Dungeon Forge'),
-    nameInput, h('div', { class: 'sep' }), landSel, h('div', { class: 'sep' }), timebox, lightbox,
-    h('div', { class: 'spacer' }),
-    h('div', { class: 'group', role: 'group', 'aria-label': 'Undo and redo' }, undoBtn, redoBtn),
-    h('div', { class: 'group', role: 'group', 'aria-label': 'View' }, cutBtn, gridBtn, soundBtn),
-    walkBtn, h('div', { class: 'menu-wrap' }, menuBtn, menu));
+    h('div', { class: 'tb-left' }, menuWrap),
+    h('div', { class: 'tb-mid' }, nameInput),
+    h('div', { class: 'tb-right' }, sceneWrap, h('div', { class: 'group', role: 'group', 'aria-label': 'Undo and redo' }, undoBtn, redoBtn), walkBtn));
 
   // ---------- palette ----------
   const toolBtns = {};
@@ -371,26 +445,48 @@ export function buildUI(root, H) {
   const hasSave = H.hasAutosave();
   const startCard = (icon, title, text, fn) => h('button', { class: 'start', onclick: () => { startBg.classList.remove('open'); fn(); } },
     h('div', { class: 'sg', html: icon }), h('div', {}, h('b', {}, title), h('span', {}, text)));
-  const sampleCard = (title, text, fn) => h('button', { class: 'start', onclick: () => { startBg.classList.remove('open'); fn(); } }, h('div', {}, h('b', {}, title), h('span', {}, text)));
+  // the finished maps, on a shelf that scrolls sideways
+  const sampleCard = (p) => h('button', { class: 'start sample', role: 'listitem', onclick: () => { startBg.classList.remove('open'); H.start(p.id); } },
+    h('div', {}, h('b', {}, p.title), h('span', {}, p.text), h('span', { class: 'tags' }, p.tags.map((t) => h('i', {}, t)))));
+  const shelf = h('div', { class: 'shelf', role: 'list', 'aria-label': 'Finished maps', tabindex: '0' }, PRESETS.map(sampleCard));
+  const shelfCount = h('span', { class: 'shelf-count', 'aria-live': 'polite' }, '');
+  const page = (dir) => shelf.scrollBy({ left: dir * (shelf.clientWidth - 40), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  const prevBtn = h('button', { class: 'btn icon', type: 'button', title: 'Earlier maps', 'aria-label': 'Earlier maps', onclick: () => page(-1) }, '‹');
+  const nextBtn = h('button', { class: 'btn icon', type: 'button', title: 'More maps', 'aria-label': 'More maps', onclick: () => page(1) }, '›');
+  // which cards are in view, and whether there is more either way
+  function shelfState() {
+    const cards = [...shelf.children], r = shelf.getBoundingClientRect();
+    if (!r.width) return;
+    const seen = cards.map((c, k) => [k, c.getBoundingClientRect()]).filter(([, q]) => q.left >= r.left - 4 && q.right <= r.right + 4).map(([k]) => k);
+    if (seen.length) shelfCount.textContent = `${seen[0] + 1}–${seen[seen.length - 1] + 1} of ${cards.length}`;
+    prevBtn.disabled = shelf.scrollLeft <= 2;
+    nextBtn.disabled = shelf.scrollLeft + shelf.clientWidth >= shelf.scrollWidth - 2;
+  }
+  shelf.addEventListener('scroll', shelfState, { passive: true });
+  window.addEventListener('resize', shelfState);
+  // a mouse wheel over the shelf turns its pages
+  shelf.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || shelf.scrollWidth <= shelf.clientWidth) return;
+    e.preventDefault();
+    shelf.scrollLeft += e.deltaY;
+  }, { passive: false });
+  shelf.addEventListener('keydown', (e) => {
+    if (e.target !== shelf) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); page(1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); page(-1); }
+  });
   startBg.append(h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Start a dungeon' },
     h('h1', {}, 'Dungeon Forge'),
-    h('p', { class: 'lede' }, 'Lay out a dungeon square by square. Every square is 3 feet. Set the land around it and the hour of the day, then walk the halls yourself.'),
+    h('p', { class: 'credit' }, 'By Eduardo Morais and Claude Code'),
+    h('p', { class: 'lede' }, 'Lay out a dungeon square by square. Every square is 5 feet. Set the land around it and the hour of the day, then walk the halls yourself.'),
     h('div', { class: 'starts' },
       startCard(ICONS.open, 'Empty site', 'A blank 320 × 240 ft grid of 5 ft squares. Pick a landscape around it: wilderness, a dark void or a gaming table.', () => H.start('blank')),
       startCard(ICONS.keep, 'Random keep', 'A new keep every time, with rooms, doors, furniture, loot and monsters laid out for you.', () => H.start('random'))),
-    h('div', { class: 'samples-title' }, 'Or start from a finished map'),
-    h('div', { class: 'starts samples' },
-      sampleCard('Ziggurat of the Dawn Sun', 'A stepped temple rising 24 ft from the sand, with a stair up every face.', () => H.start('ziggurat')),
-      sampleCard('The Deepdelve Mine', 'A yard in the hills, then drifts 9, 15 and 24 ft down to a forge over lava.', () => H.start('mine')),
-      sampleCard('Sunken Arena of Varn', 'Seating tiers stepping 12 ft down to a sand floor, with a royal box.', () => H.start('arena')),
-      sampleCard('Spires of the Pale Lich', 'Platforms on stone pillars in the dark, climbing to a spire 30 ft up.', () => H.start('spires')),
-      sampleCard('Watchtower on the Grey Crag', 'Snowy terraces up to a tower 21 ft above the plain, and a cave below.', () => H.start('crag')),
-      sampleCard('The sunken crypt', 'A keep with a throne hall, chapel, library, prison and a hidden vault.', () => H.start('crypt')),
-      sampleCard('Bandit camp', 'A palisade fort in the forest with tents, a campfire and stolen loot.', () => H.start('camp')),
-      sampleCard('Drowned shrine', 'Ruined columns and a fountain on a desert dune at dusk.', () => H.start('shrine'))),
+    h('div', { class: 'shelf-head' }, h('div', { class: 'samples-title' }, 'Or start from a finished map'), shelfCount, prevBtn, nextBtn),
+    shelf,
     h('div', { class: 'foot' },
       hasSave ? h('button', { class: 'btn', onclick: () => { startBg.classList.remove('open'); H.start('resume'); } }, 'Continue where you left off') : h('span'),
-      h('span', {}, 'Drag moves the view · right-drag turns · ? shows all controls'))));
+      h('span', {}, `Version ${__APP_VERSION__} · drag moves the view · right-drag turns · ? shows all controls`))));
 
   // ---------- help modal ----------
   const helpBg = h('div', { class: 'modal-bg', onclick: (e) => { if (e.target === helpBg) helpBg.classList.remove('open'); } });
@@ -479,7 +575,7 @@ export function buildUI(root, H) {
       showDesc(state.selected ? byId[state.selected] : null);
     },
     setLight(v) { lightIn.value = String(Math.round(v * 100)); lightRead.textContent = `${Math.round(v * 100)}%`; },
-    setLandscape(id) { landSel.value = id; },
+    setLandscape(id) { landSel.value = id; scene.land = LANDSCAPES[id]?.name || id; showScene(); },
     setName(n) { nameInput.value = n; walkName.textContent = n; },
     setTime(t, playing) {
       knob.style.left = (t / 24) * 100 + '%';
@@ -490,11 +586,13 @@ export function buildUI(root, H) {
       dial.setAttribute('aria-valuenow', t.toFixed(1));
       dial.setAttribute('aria-valuetext', `${fmtTime(t)}, ${phase(t)}`);
       playBtn.textContent = playing ? '❚❚' : '▶';
+      scene.time = fmtTime(t);
+      showScene();
     },
-    setCut(label) { cutBtn.querySelector('.lbl').textContent = 'Walls: ' + label; cutBtn.classList.toggle('on', label !== 'full'); },
-    setGrid(on) { gridBtn.classList.toggle('on', on); },
-    setSound(on) { soundBtn.classList.toggle('on', on); },
-    setQuality(q) { refs.qLabel.textContent = 'Graphics: ' + q; },
+    setCut(label) { cutSeg.set(label); },
+    setGrid(on) { gridState = on; gridSeg.set(on ? 'on' : 'off'); },
+    setSound(on) { soundState = on; soundSeg.set(on ? 'on' : 'off'); },
+    setQuality(q) { graphicsSeg.set(q); },
     setHover(info) {
       where.classList.toggle('bad', !!info?.problem);
       where.textContent = !info ? '—' : info.problem ? info.problem : `Square ${info.i}, ${info.j} (${info.i * CELL}, ${info.j * CELL} ft)${info.text ? ' · ' + info.text : ''}`;
@@ -504,8 +602,9 @@ export function buildUI(root, H) {
       stats.innerHTML = `${s.floors} squares · ${s.objects} pieces · treasure <b>${s.gp.toLocaleString()} gp</b>` + (s.xp ? ` · foes <b>${s.xp.toLocaleString()} XP</b>` : '');
     },
     setCompass(yaw) { needle.style.transform = `rotate(${yaw}rad)`; },
-    setUndo(canU, canR) { undoBtn.disabled = !canU; redoBtn.disabled = !canR; undoBtn.style.opacity = canU ? 1 : 0.4; redoBtn.style.opacity = canR ? 1 : 0.4; },
+    setUndo(canU, canR) { undoBtn.disabled = !canU; redoBtn.disabled = !canR; undoBtn.style.opacity = canU ? 1 : 0.4; redoBtn.style.opacity = canR ? 1 : 0.4; undoItem.disabled = !canU; redoItem.disabled = !canR; },
     walkMode(on) {
+      if (on) closeMenu();
       root.classList.toggle('walk-mode', on);
       walkhud.classList.toggle('on', on);
       hurt.classList.remove('on'); // showing the HUD again would replay the red flash
@@ -604,7 +703,7 @@ export function buildUI(root, H) {
       if (wasHit) { hurt.className = 'hurt'; void hurt.offsetWidth; hurt.className = 'hurt on'; }
     },
     setPurse(gp, xp = 0) { purse.textContent = `${gp.toLocaleString()} gp` + (xp ? ` · ${xp.toLocaleString()} XP` : ''); },
-    showStart() { startBg.classList.add('open'); },
+    showStart() { startBg.classList.add('open'); requestAnimationFrame(shelfState); },
     showCoach() {
       let seen = false;
       try { seen = localStorage.getItem('dungeon-forge:coached') === '1'; } catch { /* first run */ }

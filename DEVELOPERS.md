@@ -16,6 +16,27 @@ pnpm preview        # serve the dist/ build
 
 Requires Node 18+ and pnpm. The only runtime dependency is `three`.
 
+## Web app (installable, works offline)
+
+The normal build (`pnpm build`, in `dist/`) is a progressive web app. Opened in Chrome, Edge or Safari it can be installed like a program (the install button in the address bar, or *Add to Home Screen* on a phone), and once opened it also works without a network.
+
+| File | Role |
+| --- | --- |
+| `public/manifest.webmanifest` | The app's name, colours and icons for installing |
+| `public/icons/` | The icons, made from `app-icon.png` (192 and 512 px, a maskable 512 px one on the night-blue background, an Apple touch icon and a favicon) |
+| `public/sw.js` | The offline worker. Pages come from the network first and from the saved copy offline; built scripts, styles and icons come from the copy first. The interface fonts are kept too |
+| `src/main.js` `registerOffline()` | Registers the worker as `sw.js?v=<version>`; a new version starts a fresh copy and drops the old one. Skipped in the dev server, the single-file and artifact builds and the Windows app |
+
+To try it locally run `pnpm build` then `pnpm preview` (http://localhost:4173); the dev server never registers the worker.
+
+### Publishing it on GitHub Pages
+
+The **Web app** workflow (`.github/workflows/web-app.yml`) builds the app and publishes it on GitHub Pages on every push to `master`, or from the Actions tab with **Run workflow**. Once, in the repository's **Settings → Pages → Build and deployment**, set **Source** to **GitHub Actions**. The site then lives at `https://<user>.github.io/<repository>/`. The old single-file copy in `docs/index.html` is no longer used once Pages is switched over and can be deleted.
+
+### Version number
+
+The version is in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`; change all three together. The welcome screen shows it, and the offline worker uses it to know when to refresh its copy.
+
 ## Windows app (Tauri)
 
 The same game can ship as a small Windows program. [Tauri](https://v2.tauri.app) opens the built game in a native window using WebView2, the browser engine built into Windows 10 and 11, so the app is a few MB rather than the ~100 MB of an Electron app. In the app, *Export this map*, *Download picture* and the battle map open a normal Windows Save dialog.
@@ -32,8 +53,8 @@ The Tauri project lives in `src-tauri/`:
 ### Option A: let GitHub build it (no Rust needed)
 
 1. Put the project in a GitHub repository.
-2. Open the repository's **Actions** tab, pick **Windows app**, and press **Run workflow**. Pushing a tag such as `v1.0.0` also starts it.
-3. When the run finishes (about 10 minutes the first time), download **dungeon-forge-windows** from the run's *Artifacts*. It holds the installer (`Dungeon Forge_1.0.0_x64-setup.exe`), an `.msi`, and the plain `dungeon-forge.exe`.
+2. Open the repository's **Actions** tab, pick **Windows app**, and press **Run workflow**. Pushing a tag such as `v0.6.0` also starts it, and then also publishes a GitHub release named after the tag with the installer and the `.msi` attached.
+3. When the run finishes (about 10 minutes the first time), download **dungeon-forge-windows** from the run's *Artifacts*. It holds the installer (`Dungeon Forge_0.6.0_x64-setup.exe`), an `.msi`, and the plain `dungeon-forge.exe`.
 
 ### Option B: build it on your Windows PC
 
@@ -55,15 +76,15 @@ pnpm desktop:build    # makes the installer and the exe
 The first build compiles a few hundred Rust crates and takes several minutes; later builds are much faster. The results are in `src-tauri/target/release/`:
 
 - `dungeon-forge.exe`: runs on its own on any PC with WebView2.
-- `bundle/nsis/Dungeon Forge_1.0.0_x64-setup.exe`: an installer that adds a Start menu entry and installs WebView2 if a PC lacks it.
-- `bundle/msi/Dungeon Forge_1.0.0_x64_en-US.msi`: the same as an MSI package, for managed PCs.
+- `bundle/nsis/Dungeon Forge_0.6.0_x64-setup.exe`: an installer that adds a Start menu entry and installs WebView2 if a PC lacks it.
+- `bundle/msi/Dungeon Forge_0.6.0_x64_en-US.msi`: the same as an MSI package, for managed PCs.
 
 ### Good to know
 
 - **SmartScreen warning.** Windows warns about apps that are not code-signed. Players click **More info → Run anyway**. Removing the warning needs a code-signing certificate.
 - **Saves are separate.** The app keeps its own autosave, apart from any browser. Use *Export this map* and *Import a map* to move maps between them.
 - **Fonts.** The interface fonts load from Google Fonts. With no internet connection the app falls back to system fonts and works the same.
-- **Version number.** Change it in `src-tauri/tauri.conf.json` (`version`) before building a new release.
+- **Version number.** Change it in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` before building a new release (see the web app section above).
 
 ## How it is built
 
@@ -88,7 +109,9 @@ The first build compiles a few hundred Rust crates and takes several minutes; la
 | `src/creatures.js` | The creature models, built on one shared two-legged body with a weapon arm that swings |
 | `src/fx.js` | Pooled glowing effects for the game: bolts, bursts and sparks |
 | `src/game.js` | The game played in walk mode: noticing, initiative, turns, creature path-finding and attacks, traps, keys, the exit and the end-of-run summary |
-| `src/samples.js` | The sample maps, the random keep generator and themed room furnishing |
+| `src/samples.js` | The first eight sample maps, the random keep generator, themed room furnishing and the map-building helpers |
+| `src/moreSamples.js` | Eight more sample maps, with `room()` and `enclose()` helpers for walled rooms and caves |
+| `src/presets.js` | The list of finished maps on the welcome screen: title, text, tags, landscape, time and builder |
 | `src/audio.js` | Procedural ambience and sound effects (Web Audio) |
 | `src/desktop.js` | Native Save dialog when running as the desktop app |
 | `scripts/make-artifact.mjs` | Packages the single-file build for the artifact viewer without touching the script |
